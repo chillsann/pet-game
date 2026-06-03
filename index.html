@@ -280,7 +280,6 @@
             // ===== 音频系统 =====
             let _audioCtx = null;
             let _ttsAudio = null;
-            let _speechKeepAlive = null;
 
             function getAudioCtx() {
                 if (!_audioCtx) {
@@ -326,44 +325,64 @@
                 return text.replace(/\[name\]/g, 'Tom').replace(/[\[\]]/g, '').trim();
             }
 
-            function speakNow(text) {
-                if (!text) return;
-                text = cleanTTSText(text);
-                try {
-                    if (!_ttsAudio) {
-                        _ttsAudio = new Audio();
-                        _ttsAudio.preload = 'auto';
+            // 直接使用浏览器语音合成（用于语法和口语长句）
+            function speakNative(text) {
+                if (!text || !('speechSynthesis' in window)) return;
+                const synth = window.speechSynthesis;
+                synth.cancel(); // 取消之前的语音
+                const utterance = new SpeechSynthesisUtterance(cleanTTSText(text));
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.volume = 1.0;
+                // 某些浏览器需要resume才能播放
+                synth.speak(utterance);
+                // 保持语音合成活跃
+                const resumeInterval = setInterval(() => {
+                    if (synth.speaking) {
+                        synth.resume();
+                    } else {
+                        clearInterval(resumeInterval);
                     }
-                    _ttsAudio.pause();
-                    _ttsAudio.src = getTTSUrl(text);
-                    const fallbackTimer = setTimeout(() => { speakNowFallback(text); }, 2000);
-                    _ttsAudio.onplay = () => { clearTimeout(fallbackTimer); };
-                    _ttsAudio.onerror = () => { clearTimeout(fallbackTimer);
-                        speakNowFallback(text); };
-                    _ttsAudio.play().catch(() => { clearTimeout(fallbackTimer);
-                        speakNowFallback(text); });
-                } catch (e) { speakNowFallback(text); }
+                }, 200);
+                utterance.onend = () => clearInterval(resumeInterval);
+                utterance.onerror = () => clearInterval(resumeInterval);
             }
 
-            function speakNowFallback(text) {
-                if (!('speechSynthesis' in window)) return;
-                const synth = window.speechSynthesis;
-                clearInterval(_speechKeepAlive);
-                synth.cancel();
-                setTimeout(() => {
-                    try { getAudioCtx(); } catch (e) {}
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.lang = 'en-US';
-                    u.rate = 0.85;
-                    u.volume = 1.0;
-                    _speechKeepAlive = setInterval(() => {
-                        if (synth.speaking) synth.resume();
-                        else clearInterval(_speechKeepAlive);
-                    }, 300);
-                    u.onend = () => clearInterval(_speechKeepAlive);
-                    u.onerror = () => clearInterval(_speechKeepAlive);
-                    synth.speak(u);
-                }, 100);
+            // 原有TTS逻辑（用于词汇单词发音）
+            function speakWord(text) {
+                if (!text) return;
+                const clean = cleanTTSText(text);
+                // 尝试有道TTS
+                if (!_ttsAudio) {
+                    _ttsAudio = new Audio();
+                    _ttsAudio.preload = 'auto';
+                }
+                _ttsAudio.pause();
+                _ttsAudio.src = getTTSUrl(clean);
+                let fallbackTimer = setTimeout(() => {
+                    speakNative(clean); // 降级为浏览器语音
+                }, 1500);
+                _ttsAudio.onplay = () => {
+                    clearTimeout(fallbackTimer);
+                };
+                _ttsAudio.onerror = () => {
+                    clearTimeout(fallbackTimer);
+                    speakNative(clean);
+                };
+                _ttsAudio.play().catch(() => {
+                    clearTimeout(fallbackTimer);
+                    speakNative(clean);
+                });
+            }
+
+            // 根据题目类型选择发音方式
+            function speakByType(text, type) {
+                if (type === 'vocab') {
+                    speakWord(text);
+                } else {
+                    // 语法和口语直接使用浏览器语音合成，更稳定
+                    speakNative(text);
+                }
             }
 
             function unlockAll() { try { getAudioCtx(); } catch (e) {} }
@@ -371,7 +390,7 @@
                 document.addEventListener(evt, unlockAll, { once: true });
             });
 
-            // ===== PET 词汇库 (B1级别, 精选核心词汇) =====
+            // ===== PET 词汇库 (B1级别) =====
             const PET_LEXICON = {
                 nouns: [
                     "accommodation", "advantage", "advertisement", "advice", "aim", "ambition", "ankle", "appearance",
@@ -526,7 +545,7 @@
             };
             const ALL_WORDS = [...PET_LEXICON.nouns, ...PET_LEXICON.verbs, ...PET_LEXICON.adjectives];
 
-            // ===== PET词汇释义 (精选核心) =====
+            // ===== PET词汇释义 =====
             const WORD_MEANING = {
                 "accommodation": "住宿",
                 "advantage": "优势",
@@ -1648,167 +1667,166 @@
             let GRAMMAR_CORE = [
                 { question: "By the time we arrived, the film ___ .", options: ["had started", "has started",
                         "started", "was starting"
-                    ], correct: 0, explanation: "过去完成时：by the time + 过去时间，主句用 had + 过去分词，表示'在…之前已经发生'" },
+                    ], correct: 0, explanation: "过去完成时：by the time + 过去时间，主句用 had + 过去分词" },
                 { question: "She ___ in London for five years before she moved to Paris.", options: ["has lived",
                         "had lived", "lived", "was living"
                     ], correct: 1, explanation: "过去完成时：before + 过去动作，之前的动作用 had + 过去分词" },
                 { question: "If I ___ enough money, I would travel around the world.", options: ["have", "had",
                         "will have", "would have"
-                    ], correct: 1, explanation: "第二条件句（虚拟）：if + 过去式，主句用 would + 动词原形，表示与现在事实相反的假设" },
+                    ], correct: 1, explanation: "第二条件句（虚拟）：if + 过去式，主句用 would + 动词原形" },
                 { question: "If it ___ tomorrow, we will cancel the picnic.", options: ["rains", "rained",
                         "will rain", "would rain"
                     ], correct: 0, explanation: "第一条件句（真实）：if + 一般现在时，主句用 will + 动词原形" },
                 { question: "The new bridge ___ last year.", options: ["was built", "built", "is built",
-                    "has built"], correct: 0, explanation: "被动语态过去时：was/were + 过去分词，last year 提示过去" },
+                    "has built"], correct: 0, explanation: "被动语态过去时：was/were + 过去分词" },
                 { question: "English ___ all over the world.", options: ["is spoken", "speaks", "spoke",
                     "is speaking"], correct: 0, explanation: "被动语态一般现在时：am/is/are + 过去分词" },
                 { question: "She said she ___ the movie the day before.", options: ["had seen", "has seen", "saw",
                         "was seeing"
-                    ], correct: 0, explanation: "间接引语：直接引语为过去时，转述时变为过去完成时（had + 过去分词）" },
+                    ], correct: 0, explanation: "间接引语：直接引语为过去时，转述时变为过去完成时" },
                 { question: "He asked me if I ___ to the party.", options: ["was going", "am going", "will go",
                         "go"
-                    ], correct: 0, explanation: "间接引语：疑问句转述时，时态倒退一步，am going → was going" },
+                    ], correct: 0, explanation: "间接引语：时态倒退一步，am going → was going" },
                 { question: "The man ___ lives next door is a doctor.", options: ["who", "which", "what",
-                    "whose"], correct: 0, explanation: "关系从句：who 指代人，在从句中作主语" },
+                    "whose"], correct: 0, explanation: "关系从句：who 指代人" },
                 { question: "This is the book ___ I told you about.", options: ["which", "who", "what", "whose"],
-                    correct: 0, explanation: "关系从句：which 指代物，在从句中作宾语" },
+                    correct: 0, explanation: "关系从句：which 指代物" },
                 { question: "She ___ be at home; the lights are off.", options: ["can't", "must", "should",
-                    "might"], correct: 0, explanation: "情态动词表推测：can't 表示'不可能'（否定推测），must 表示'一定'（肯定推测）" },
+                    "might"], correct: 0, explanation: "情态动词表推测：can't 表示'不可能'" },
                 { question: "He ___ have missed the train. He left too late.", options: ["might", "must", "can't",
                         "should"
                     ], correct: 0, explanation: "might have + 过去分词，表示对过去的可能性推测" },
                 { question: "I ___ play the piano when I was a child.", options: ["used to", "use to", "am used to",
                         "was used to"
-                    ], correct: 0, explanation: "used to + 动词原形，表示过去经常做某事（现在不再做了）" },
+                    ], correct: 0, explanation: "used to + 动词原形，表示过去经常做某事" },
                 { question: "She isn't used to ___ up early.", options: ["getting", "get", "got", "gets"],
                     correct: 0, explanation: "be used to + 动词ing，表示'习惯于……'" },
                 { question: "He suggested ___ to the cinema.", options: ["going", "to go", "go", "went"],
-                    correct: 0, explanation: "suggest + 动词ing，不能用 suggest to do" },
+                    correct: 0, explanation: "suggest + 动词ing" },
                 { question: "I'd rather ___ at home tonight.", options: ["stay", "to stay", "staying", "stayed"],
-                    correct: 0, explanation: "would rather + 动词原形，表示'宁愿……'" },
+                    correct: 0, explanation: "would rather + 动词原形" },
                 { question: "You'd better ___ an umbrella. It looks like rain.", options: ["take", "to take",
                         "taking", "took"
-                    ], correct: 0, explanation: "had better + 动词原形，表示'最好……'" },
+                    ], correct: 0, explanation: "had better + 动词原形" },
                 { question: "Despite ___ tired, he kept working.", options: ["being", "be", "was", "he was"],
-                    correct: 0, explanation: "despite + 名词/动词ing，不能直接跟句子" },
+                    correct: 0, explanation: "despite + 名词/动词ing" },
                 { question: "She not only sings well ___ also plays the guitar.", options: ["but", "and", "or",
                         "so"
-                    ], correct: 0, explanation: "not only... but also... 固定搭配，表示'不但……而且……'" },
+                    ], correct: 0, explanation: "not only... but also... 固定搭配" },
                 { question: "___ the weather was bad, they went hiking.", options: ["Although", "Because", "Unless",
                         "Since"
-                    ], correct: 0, explanation: "Although 引导让步状语从句，表示'虽然'" },
+                    ], correct: 0, explanation: "Although 引导让步状语从句" },
                 { question: "I wish I ___ taller.", options: ["were", "am", "will be", "would be"], correct: 0,
-                    explanation: "wish + 虚拟语气：与现在事实相反用过去式（be 动词用 were）" },
+                    explanation: "wish + 虚拟语气：与现在事实相反用过去式（be 用 were）" },
                 { question: "The harder you work, ___ results you will get.", options: ["the better", "better",
                         "the best", "good"
-                    ], correct: 0, explanation: "the + 比较级... the + 比较级，表示'越……越……'" },
+                    ], correct: 0, explanation: "the + 比较级... the + 比较级" },
                 { question: "She is one of ___ students in the class.", options: ["the most intelligent",
                         "more intelligent", "most intelligent", "intelligent"
-                    ], correct: 0, explanation: "最高级：one of + the + 最高级 + 复数名词，表示'最……之一'" },
+                    ], correct: 0, explanation: "最高级：one of + the + 最高级 + 复数名词" },
                 { question: "I'm looking forward ___ from you.", options: ["to hearing", "to hear", "hearing",
                         "hear"
-                    ], correct: 0, explanation: "look forward to + 动词ing，to 是介词，后跟动名词" },
+                    ], correct: 0, explanation: "look forward to + 动词ing" },
                 { question: "He denied ___ the window.", options: ["breaking", "to break", "break", "broke"],
-                    correct: 0, explanation: "deny + 动词ing，表示'否认做过……'" },
+                    correct: 0, explanation: "deny + 动词ing" },
                 { question: "It's no use ___ over spilt milk.", options: ["crying", "to cry", "cry", "cried"],
-                    correct: 0, explanation: "It's no use + 动词ing，固定句型，表示'做……没有用'" },
+                    correct: 0, explanation: "It's no use + 动词ing" },
                 { question: "She made him ___ his room.", options: ["clean", "to clean", "cleaning", "cleaned"],
-                    correct: 0, explanation: "make + 宾语 + 动词原形（不带 to），表示'让/使某人做……'" },
+                    correct: 0, explanation: "make + 宾语 + 动词原形" },
                 { question: "He was made ___ his room.", options: ["to clean", "clean", "cleaning", "cleaned"],
-                    correct: 0, explanation: "被动语态中 make 后面要带 to：be made to do" },
+                    correct: 0, explanation: "被动语态中 make 后面要带 to" },
                 { question: "There's no point ___ about it now.", options: ["in arguing", "to argue", "argue",
                         "argued"
-                    ], correct: 0, explanation: "There's no point in + 动词ing，表示'做……没有意义'" },
+                    ], correct: 0, explanation: "There's no point in + 动词ing" },
                 { question: "She succeeded ___ passing the exam.", options: ["in", "on", "at", "to"], correct: 0,
-                    explanation: "succeed in + 动词ing，表示'成功做……'" },
+                    explanation: "succeed in + 动词ing" },
                 { question: "He insisted ___ paying for the meal.", options: ["on", "in", "at", "to"], correct: 0,
-                    explanation: "insist on + 动词ing，表示'坚持做……'" },
+                    explanation: "insist on + 动词ing" },
                 { question: "I'm not sure ___ I can come.", options: ["whether", "what", "which", "who"],
-                    correct: 0, explanation: "whether 引导宾语从句，表示'是否'（可与 if 互换，但介词后只用 whether）" },
+                    correct: 0, explanation: "whether 引导宾语从句，表示'是否'" },
                 { question: "She asked me ___ I had finished.", options: ["if", "what", "which", "who"],
-                    correct: 0, explanation: "if/whether 引导宾语从句，表示'是否'" },
+                    correct: 0, explanation: "if/whether 引导宾语从句" },
                 { question: "This is the place ___ we first met.", options: ["where", "which", "who", "what"],
-                    correct: 0, explanation: "关系副词 where 引导定语从句，修饰地点" },
+                    correct: 0, explanation: "关系副词 where 引导定语从句" },
                 { question: "He has few friends, ___?", options: ["has he", "does he", "hasn't he", "doesn't he"],
-                    correct: 1, explanation: "反义疑问句：few 表示否定含义，前否后肯，用 does he" },
+                    correct: 1, explanation: "反义疑问句：few 表示否定含义，前否后肯" },
                 { question: "You have never been to Paris, ___?", options: ["have you", "haven't you", "do you",
                         "don't you"
-                    ], correct: 0, explanation: "反义疑问句：never 表示否定，前否后肯，用 have you" },
+                    ], correct: 0, explanation: "反义疑问句：never 表示否定，前否后肯" },
                 { question: "I'd like ___ information about the course.", options: ["some", "an", "many", "few"],
-                    correct: 0, explanation: "information 是不可数名词，用 some 修饰，不能用 an/many/few" },
+                    correct: 0, explanation: "information 不可数，用 some 修饰" },
                 { question: "How ___ furniture do you need?", options: ["much", "many", "few", "several"],
-                    correct: 0, explanation: "furniture 是不可数名词，用 How much 提问数量" },
+                    correct: 0, explanation: "furniture 不可数，用 How much" },
                 { question: "The number of students ___ increasing.", options: ["is", "are", "be", "were"],
-                    correct: 0, explanation: "the number of + 复数名词 作主语时谓语用单数（指'……的数量'）" },
+                    correct: 0, explanation: "the number of 作主语时谓语用单数" },
                 { question: "A number of students ___ absent.", options: ["are", "is", "be", "was"], correct: 0,
-                    explanation: "a number of + 复数名词 作主语时谓语用复数（指'许多……'）" },
+                    explanation: "a number of 作主语时谓语用复数" },
                 { question: "Neither he nor I ___ going.", options: ["am", "is", "are", "be"], correct: 0,
-                    explanation: "neither...nor 就近原则：靠近 nor 的主语 I 决定谓语用 am" },
+                    explanation: "neither...nor 就近原则" },
                 { question: "It is essential that she ___ on time.", options: ["be", "is", "will be", "was"],
                     correct: 0, explanation: "虚拟语气：It is essential that + 主语 + (should) + 动词原形" },
                 { question: "He looks as if he ___ ill.", options: ["were", "is", "will be", "was being"],
-                    correct: 0, explanation: "as if 引导虚拟语气：与现在事实相反用过去式（be 用 were）" },
+                    correct: 0, explanation: "as if 引导虚拟语气：与现在事实相反用过去式" },
                 { question: "I regret ___ you that your application was unsuccessful.", options: ["to inform",
                         "informing", "inform", "informed"
-                    ], correct: 0, explanation: "regret to do 表示'遗憾地要做……'；regret doing 表示'后悔做过……'" },
+                    ], correct: 0, explanation: "regret to do 表示'遗憾地要做……'" },
                 { question: "She stopped ___ a rest because she was exhausted.", options: ["to take", "taking",
                         "take", "took"
-                    ], correct: 0, explanation: "stop to do 表示'停下来去做……'；stop doing 表示'停止做……'" },
+                    ], correct: 0, explanation: "stop to do 表示'停下来去做……'" },
                 { question: "We ___ for three hours when we finally reached the hotel.", options: ["had been walking",
                         "walked", "have walked", "were walking"
-                    ], correct: 0, explanation: "过去完成进行时：had been + 动词ing，表示在过去某一时间之前一直持续的动作" },
+                    ], correct: 0, explanation: "过去完成进行时：had been + 动词ing" },
                 { question: "She ___ her keys and can't find them anywhere.", options: ["has lost", "lost",
-                    "had lost", "loses"], correct: 0, explanation: "现在完成时：过去的动作对现在有影响（钥匙丢了，现在找不到）" },
+                    "had lost", "loses"], correct: 0, explanation: "现在完成时：过去动作对现在有影响" },
                 { question: "I ___ my homework yet.", options: ["haven't finished", "didn't finish",
-                    "don't finish", "hadn't finished"], correct: 0, explanation: "现在完成时：yet 用于否定句，表示'还没有'" },
+                    "don't finish", "hadn't finished"], correct: 0, explanation: "现在完成时：yet 用于否定句" },
                 { question: "He has been studying English ___ 2019.", options: ["since", "for", "from", "in"],
-                    correct: 0, explanation: "since + 时间点，for + 时间段，2019 是时间点用 since" },
+                    correct: 0, explanation: "since + 时间点" },
                 { question: "They ___ married for ten years.", options: ["have been", "are", "were", "had been"],
-                    correct: 0, explanation: "现在完成时：for ten years 表示持续到现在，用 have been" },
+                    correct: 0, explanation: "现在完成时：for ten years 表示持续到现在" },
                 { question: "No sooner had he arrived ___ it started raining.", options: ["than", "when", "then",
                         "that"
-                    ], correct: 0, explanation: "no sooner... than... 固定搭配，表示'一……就……'" },
+                    ], correct: 0, explanation: "no sooner... than... 固定搭配" },
                 { question: "Hardly had she sat down ___ the phone rang.", options: ["when", "than", "then",
-                    "that"], correct: 0, explanation: "hardly... when... 固定搭配，表示'刚……就……'" },
+                    "that"], correct: 0, explanation: "hardly... when... 固定搭配" },
                 { question: "The project ___ by the end of next month.", options: ["will have been completed",
                         "will complete", "completes", "has completed"
                     ], correct: 0, explanation: "将来完成时被动语态：will have been + 过去分词" },
                 { question: "He objected to ___ treated like a child.", options: ["being", "be", "been", "was"],
-                    correct: 0, explanation: "object to + 动词ing（被动用 being + 过去分词），to 是介词" },
+                    correct: 0, explanation: "object to + 动词ing（被动用 being + 过去分词）" },
                 { question: "I'm not accustomed to ___ so early.", options: ["getting up", "get up", "got up",
                         "gets up"
-                    ], correct: 0, explanation: "be accustomed to + 动词ing，表示'习惯于……'" },
+                    ], correct: 0, explanation: "be accustomed to + 动词ing" },
                 { question: "She can't help ___ when she watches that movie.", options: ["crying", "to cry",
-                    "cry", "cried"], correct: 0, explanation: "can't help + 动词ing，表示'忍不住……'" },
+                    "cry", "cried"], correct: 0, explanation: "can't help + 动词ing" },
                 { question: "It's time we ___ a decision.", options: ["made", "make", "will make", "are making"],
-                    correct: 0, explanation: "It's time + 主语 + 过去式（虚拟语气），表示'该是做……的时候了'" },
+                    correct: 0, explanation: "It's time + 主语 + 过去式（虚拟语气）" },
                 { question: "I'd rather you ___ here with me.", options: ["stayed", "stay", "to stay",
-                    "staying"], correct: 0, explanation: "would rather + 主语 + 过去式，表示'宁愿别人……'（虚拟语气）" },
+                    "staying"], correct: 0, explanation: "would rather + 主语 + 过去式（虚拟语气）" },
                 { question: "The population of China ___ huge.", options: ["is", "are", "be", "were"], correct: 0,
                     explanation: "population 作主语时谓语用单数" },
                 { question: "A series of lectures ___ been arranged.", options: ["has", "have", "are", "were"],
-                    correct: 0, explanation: "a series of + 复数名词 作主语时谓语用单数" },
+                    correct: 0, explanation: "a series of 作主语时谓语用单数" },
                 { question: "Many a student ___ made this mistake.", options: ["has", "have", "are", "were"],
-                    correct: 0, explanation: "many a + 单数名词 作主语时谓语用单数，表示'许多'" },
+                    correct: 0, explanation: "many a + 单数名词 作主语时谓语用单数" },
                 { question: "The boy as well as his parents ___ invited.", options: ["was", "were", "are",
-                    "have been"], correct: 0, explanation: "as well as 连接两个主语时，谓语与前面的主语一致（the boy 单数）" },
+                    "have been"], correct: 0, explanation: "as well as 连接时，谓语与前面的主语一致" },
                 { question: "She can't afford ___ a new car.", options: ["to buy", "buying", "buy", "bought"],
-                    correct: 0, explanation: "afford to do，表示'负担得起做……'" },
+                    correct: 0, explanation: "afford to do" },
                 { question: "He pretended ___ asleep.", options: ["to be", "being", "be", "been"], correct: 0,
-                    explanation: "pretend to do/be，表示'假装……'" },
+                    explanation: "pretend to do/be" },
                 { question: "The teacher had us ___ the exercise again.", options: ["do", "to do", "doing",
-                    "done"], correct: 0, explanation: "have + 宾语 + 动词原形，表示'让/叫某人做……'" }
+                    "done"], correct: 0, explanation: "have + 宾语 + 动词原形" }
             ];
 
-            // 扩展语法题库至目标数量
             const extraGram = [
                 { question: "Scarcely ___ when the guests arrived.", options: ["had she finished cooking",
                         "she had finished cooking", "she finished cooking", "did she finish cooking"
                     ], correct: 0, explanation: "scarcely... when 句型中，主句用过去完成时且需倒装" },
                 { question: "The letter ___ yesterday.", options: ["was posted", "posted", "has posted",
-                    "is posted"], correct: 0, explanation: "被动语态过去时：was/were + 过去分词 + 过去时间" },
+                    "is posted"], correct: 0, explanation: "被动语态过去时" },
                 { question: "He asked where I ___ .", options: ["lived", "live", "had lived", "was living"],
-                    correct: 0, explanation: "间接引语时态倒退：一般现在时 → 一般过去时" },
+                    correct: 0, explanation: "间接引语时态倒退" },
                 { question: "I'll call you as soon as I ___ .", options: ["arrive", "will arrive", "arrived",
                         "am arriving"
                     ], correct: 0, explanation: "时间状语从句用一般现在时表将来" },
@@ -1816,10 +1834,10 @@
                         "has studied", "studies"
                     ], correct: 0, explanation: "第三条件句：if + had + 过去分词，主句 would have + 过去分词" },
                 { question: "The house needs ___ .", options: ["cleaning", "to clean", "clean", "cleaned"],
-                    correct: 0, explanation: "need + 动词ing 表被动含义（= need to be cleaned）" },
+                    correct: 0, explanation: "need + 动词ing 表被动含义" },
                 { question: "He ___ have gone home early; his coat is still here.", options: ["can't", "must",
                         "might", "should"
-                    ], correct: 0, explanation: "can't have done 表示对过去的否定推测（不可能已经……）" }
+                    ], correct: 0, explanation: "can't have done 表示对过去的否定推测" }
             ];
             while (GRAMMAR_CORE.length < 200) GRAMMAR_CORE.push({ ...extraGram[GRAMMAR_CORE.length % extraGram
                     .length] });
@@ -1828,20 +1846,20 @@
             let SPEAKING_CORE = [
                 { scenario: "你刚认识一个人，想了解他的兴趣爱好：", options: ["What do you like doing in your free time?",
                         "You like free time?", "Tell me your hobby now.", "Do you free time?"
-                    ], correct: 0, explanation: "What do you like doing...? 是礼貌地询问对方业余爱好/兴趣的标准句型" },
+                    ], correct: 0, explanation: "What do you like doing...? 是礼貌地询问对方业余爱好的标准句型" },
                 { scenario: "在讨论中你想表达自己的观点：", options: ["In my opinion, it's a great idea.",
                         "I say it's good.", "My idea is good.", "Good idea I think."
-                    ], correct: 0, explanation: "In my opinion... 是表达个人观点的正式说法，PET口语常用" },
+                    ], correct: 0, explanation: "In my opinion... 是表达个人观点的正式说法" },
                 { scenario: "你不同意别人的看法，礼貌地说：", options: ["I see your point, but I'm not sure I agree.",
                         "You're wrong.", "I don't like that.", "No, that's bad."
-                    ], correct: 0, explanation: "I see your point, but... 是礼貌地表达不同意的说法（先承认对方，再转折）" },
+                    ], correct: 0, explanation: "I see your point, but... 是礼貌地表达不同意的说法" },
                 { scenario: "向朋友推荐一本书：", options: ["You should read this book—it's really fascinating.",
                         "Read this book.", "Book good, read it.", "I say read book."
-                    ], correct: 0, explanation: "You should + 动词原形，配合形容词描述（fascinating），是推荐的标准说法" },
+                    ], correct: 0, explanation: "You should + 动词原形，配合形容词描述，是推荐的标准说法" },
                 { scenario: "描述一张照片中的场景：", options: [
                         "In the picture, I can see several people enjoying a picnic in the park.",
                         "Picture has people picnic.", "People in picture eating.", "I see people picture."
-                    ], correct: 0, explanation: "描述图片用 In the picture, I can see... + 进行时/现在分词，是PET口语Part 2的常用句型" },
+                    ], correct: 0, explanation: "描述图片用 In the picture, I can see... 是PET口语Part 2的常用句型" },
                 { scenario: "你想邀请朋友一起去看展览：", options: ["Would you like to go to the exhibition with me?",
                         "Exhibition come with me.", "You come exhibition.", "Go exhibition now."
                     ], correct: 0, explanation: "Would you like to...? 是礼貌邀请的标准句型" },
@@ -1855,7 +1873,7 @@
                 { scenario: "向老师请求延期交作业：", options: [
                         "Excuse me, would it be possible to hand in my homework a bit late?",
                         "Homework late give me.", "I need more time homework.", "Late homework please."
-                    ], correct: 0, explanation: "Would it be possible to...? 是非常礼貌的请求句式，PET口语要求更高的礼貌度" },
+                    ], correct: 0, explanation: "Would it be possible to...? 是非常礼貌的请求句式" },
                 { scenario: "比较两个城市：", options: [
                         "Compared to my hometown, this city is much more crowded but also more exciting.",
                         "This city more crowded.", "My hometown small this city big.", "Cities different."
@@ -1931,7 +1949,7 @@
                     ], c: 0, explanation: "I'd like to make an appointment... 是预约的标准说法" },
                 { s: "表达对某个决定的后悔：", o: ["Looking back, I wish I had made a different choice.",
                         "I regret choice.", "Bad decision I made.", "I should choose different."
-                    ], c: 0, explanation: "Looking back, I wish I had... 是表达后悔的高级句型（虚拟语气）" },
+                    ], c: 0, explanation: "Looking back, I wish I had... 是表达后悔的高级句型" },
                 { s: "请求帮助解决电脑问题：", o: [
                         "Excuse me, could you give me a hand with my computer? It keeps crashing.",
                         "Computer broken help.", "Fix my computer.", "Help computer problem."
@@ -2247,7 +2265,8 @@
                 if (e.target.id === 'btnReadScenario' || e.target.closest('#btnReadScenario')) {
                     const q = state.questions[state.currentIndex];
                     if (q && q.type === 'speaking') {
-                        speakNow(q.options[q.correct]);
+                        // 口语发音直接使用浏览器语音合成
+                        speakNative(q.options[q.correct]);
                     }
                 }
             }, true);
@@ -2363,8 +2382,8 @@
                     if (state.dailyMode && q.type) { state.dailyCorrect[q.type] = (state.dailyCorrect[q.type] || 0) + 1; }
                     state.feedback = '✅ 正确！ +10分';
                     playSound('correct');
-                    if (q.type === 'vocab') speakNow(q.english);
-                    else speakNow(q.options[q.correct]);
+                    // 根据题型选择发音方式
+                    speakByType(q.type === 'vocab' ? q.english : q.options[q.correct], q.type);
                     if (q.type === 'vocab' && state.dailyMode) { recordVocabAnswer(q.english, true); }
                     setTimeout(() => {
                         if (!state.dailyMode && state.lives <= 0) { gameOver(); return; }
@@ -2375,7 +2394,7 @@
                         state.wrongQuestions.push({ question: { ...q }, wrongAnswer: q.options[idx], wrongIdx: idx });
                         state.feedback = `❌ 再想想，做对了再继续哦！\n${getExplanation(q, idx)}`;
                         playSound('wrong');
-                        speakNow(q.options[q.correct]);
+                        speakByType(q.options[q.correct], q.type);
                         updateFeedback();
                         const newOpts = shuffleArray(q.options);
                         const newCorrect = newOpts.indexOf(q.options[q.correct]);
@@ -2391,7 +2410,7 @@
                     if (q.type === 'vocab' && state.dailyMode) recordVocabAnswer(q.english, false);
                     state.feedback = `❌ 错误！\n${getExplanation(q, idx)}`;
                     playSound('wrong');
-                    speakNow(q.options[q.correct]);
+                    speakByType(q.options[q.correct], q.type);
                     updateFeedback();
                     showNextButton();
                 }
@@ -2404,7 +2423,7 @@
                     state.wrongQuestions.push({ question: { ...q }, wrongAnswer: '（未作答）', wrongIdx: -1 });
                     state.feedback = `❌ 再想想，做对了再继续哦！\n${getExplanation(q)}`;
                     playSound('wrong');
-                    speakNow(q.options[q.correct]);
+                    speakByType(q.options[q.correct], q.type);
                     updateFeedback();
                     const newOpts = shuffleArray(q.options);
                     const newCorrect = newOpts.indexOf(q.options[q.correct]);
@@ -2421,7 +2440,7 @@
                 playSound('wrong');
                 const btn = document.querySelector(`[data-idx="${q.correct}"]`);
                 if (btn) btn.classList.add('correct');
-                speakNow(q.options[q.correct]);
+                speakByType(q.options[q.correct], q.type);
                 updateFeedback();
                 showNextButton();
             }
