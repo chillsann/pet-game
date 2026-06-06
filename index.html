@@ -61,22 +61,75 @@
         // ===== 音频系统 =====
         let _audioCtx = null;
         let _ttsAudio = null;
+        let _currentUtterance = null;
+        let _speechKeepAlive = null;
         function getAudioCtx() { if (!_audioCtx) { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if (_audioCtx.state === 'suspended') _audioCtx.resume(); return _audioCtx; }
         function playSound(type) { try { const ctx = getAudioCtx(); if (ctx.state === 'suspended') return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); gain.gain.setValueAtTime(0.4, ctx.currentTime); if (type === 'correct') { osc.type = 'sine'; osc.frequency.setValueAtTime(523, ctx.currentTime); osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4); } else if (type === 'wrong') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, ctx.currentTime); osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35); } } catch(e) {} }
-        function speakNative(text) {
-            if (!text || !('speechSynthesis' in window)) return;
-            var synth = window.speechSynthesis;
-            // Only cancel if currently speaking (Chrome bug: cancel+speak=broken)
-            if (synth.speaking || synth.pending) synth.cancel();
-            var u = new SpeechSynthesisUtterance(text.replace(/\[name\]/g,'Tom').replace(/[\[\]]/g,''));
-            u.lang = 'en-US';
-            u.rate = 0.9;
-            u.volume = 1.0;
-            synth.speak(u);
+        
+        // speakNative replaced by speakNow/speakNowFallback
+
+        function getTTSUrl(text) {
+            return 'https://fanyi.baidu.com/gettts?lan=en&text=' + encodeURIComponent(text) + '&spd=3';
         }
-        function getTTSUrl(text) { return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2'; }
-        function speakWord(text) { if (!text) return; const clean = text.replace(/\[name\]/g,'Tom').replace(/[\[\]]/g,''); if (!_ttsAudio) { _ttsAudio = new Audio(); _ttsAudio.preload = 'auto'; } _ttsAudio.pause(); _ttsAudio.src = getTTSUrl(clean); let fallback = setTimeout(() => speakNative(clean), 1500); _ttsAudio.onplay = () => clearTimeout(fallback); _ttsAudio.onerror = () => { clearTimeout(fallback); speakNative(clean); }; _ttsAudio.play().catch(() => { clearTimeout(fallback); speakNative(clean); }); }
-        function speakByType(text, type) { if (type === 'vocab') speakWord(text); else speakNative(text); }
+
+        function cleanTTSText(text) {
+            return text.replace(/\[name\]/g, 'Tom').replace(/[\[\]]/g, '').trim();
+        }
+
+        function speakNow(text) {
+            if (!text) return;
+            text = cleanTTSText(text);
+            try {
+                if (!_ttsAudio) {
+                    _ttsAudio = new Audio();
+                    _ttsAudio.preload = 'auto';
+                }
+                _ttsAudio.pause();
+                _ttsAudio.src = getTTSUrl(text);
+                const fallbackTimer = setTimeout(() => { speakNowFallback(text); }, 2000);
+                _ttsAudio.onplay = () => { clearTimeout(fallbackTimer); };
+                _ttsAudio.onerror = () => { clearTimeout(fallbackTimer); speakNowFallback(text); };
+                _ttsAudio.play().catch(() => {
+                    clearTimeout(fallbackTimer);
+                    speakNowFallback(text);
+                });
+            } catch(e) {
+                speakNowFallback(text);
+            }
+        }
+
+        function speakNowFallback(text) {
+            if (!('speechSynthesis' in window)) return;
+            const synth = window.speechSynthesis;
+            clearInterval(_speechKeepAlive);
+            synth.cancel();
+            setTimeout(() => {
+                try { getAudioCtx(); } catch(e) {}
+                _currentUtterance = new SpeechSynthesisUtterance(text);
+                _currentUtterance.lang = 'en-US';
+                _currentUtterance.rate = 0.85;
+                _currentUtterance.volume = 1.0;
+                _speechKeepAlive = setInterval(() => {
+                    if (synth.speaking) synth.resume();
+                    else clearInterval(_speechKeepAlive);
+                }, 200);
+                _currentUtterance.onend = () => { clearInterval(_speechKeepAlive); };
+                _currentUtterance.onerror = () => { clearInterval(_speechKeepAlive); };
+                synth.speak(_currentUtterance);
+                setTimeout(() => { if (synth.paused) synth.resume(); }, 150);
+            }, 100);
+        }
+
+        function speakWord(text) {
+            if (!text) return;
+            text = cleanTTSText(text);
+            speakNow(text);
+        }
+
+        function speakByType(text, type) {
+            if (type === 'vocab') speakNow(text);
+            else speakNow(text);
+        }
         function unlockAll() { try { getAudioCtx(); } catch(e) {} }
         ['touchstart','touchend','click','pointerdown'].forEach(e => document.addEventListener(e, unlockAll, { once: true }));
 
@@ -346,7 +399,7 @@
         document.addEventListener('click', function(e) {
             if (e.target.id === 'btnReadScenario' || e.target.closest('#btnReadScenario')) {
                 const q = state.questions[state.currentIndex];
-                if (q && q.type === 'speaking') speakNative(q.options[q.correct]);
+                if (q && q.type === 'speaking') speakNow(q.options[q.correct]);
             }
         }, true);
 
