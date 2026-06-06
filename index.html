@@ -63,7 +63,33 @@
         let _ttsAudio = null;
         function getAudioCtx() { if (!_audioCtx) { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if (_audioCtx.state === 'suspended') _audioCtx.resume(); return _audioCtx; }
         function playSound(type) { try { const ctx = getAudioCtx(); if (ctx.state === 'suspended') return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); gain.gain.setValueAtTime(0.4, ctx.currentTime); if (type === 'correct') { osc.type = 'sine'; osc.frequency.setValueAtTime(523, ctx.currentTime); osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4); } else if (type === 'wrong') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, ctx.currentTime); osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35); } } catch(e) {} }
-        function speakNative(text) { if (!text || !('speechSynthesis' in window)) return; const synth = window.speechSynthesis; synth.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\[name\]/g,'Tom').replace(/[\[\]]/g,'')); u.lang = 'en-US'; u.rate = 0.9; u.volume = 1.0; synth.speak(u); const interval = setInterval(() => { if (synth.speaking) synth.resume(); else clearInterval(interval); }, 200); u.onend = () => clearInterval(interval); u.onerror = () => clearInterval(interval); }
+        function speakNative(text) {
+            if (!text || !('speechSynthesis' in window)) return;
+            const synth = window.speechSynthesis;
+            synth.cancel();
+            // Chrome bug workaround: delay after cancel, then speak
+            setTimeout(function() {
+                const u = new SpeechSynthesisUtterance(text.replace(/\[name\]/g,'Tom').replace(/[\[\]]/g,''));
+                u.lang = 'en-US';
+                u.rate = 0.9;
+                u.volume = 1.0;
+                // Try to use a better voice
+                var voices = synth.getVoices();
+                var enVoice = voices.find(function(v) { return v.lang === 'en-US' && v.name.indexOf('Female') !== -1; })
+                           || voices.find(function(v) { return v.lang === 'en-US'; })
+                           || voices.find(function(v) { return v.lang.startsWith('en'); });
+                if (enVoice) u.voice = enVoice;
+                var iv = setInterval(function() {
+                    if (synth.speaking) synth.resume();
+                    else clearInterval(iv);
+                }, 200);
+                u.onend = function() { clearInterval(iv); };
+                u.onerror = function() { clearInterval(iv); };
+                synth.speak(u);
+                // Chrome bug: sometimes speech gets paused immediately
+                setTimeout(function() { if (synth.paused) synth.resume(); }, 100);
+            }, 50);
+        }
         function getTTSUrl(text) { return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2'; }
         function speakWord(text) { if (!text) return; const clean = text.replace(/\[name\]/g,'Tom').replace(/[\[\]]/g,''); if (!_ttsAudio) { _ttsAudio = new Audio(); _ttsAudio.preload = 'auto'; } _ttsAudio.pause(); _ttsAudio.src = getTTSUrl(clean); let fallback = setTimeout(() => speakNative(clean), 1500); _ttsAudio.onplay = () => clearTimeout(fallback); _ttsAudio.onerror = () => { clearTimeout(fallback); speakNative(clean); }; _ttsAudio.play().catch(() => { clearTimeout(fallback); speakNative(clean); }); }
         function speakByType(text, type) { if (type === 'vocab') speakWord(text); else speakNative(text); }
@@ -336,7 +362,7 @@
         document.addEventListener('click', function(e) {
             if (e.target.id === 'btnReadScenario' || e.target.closest('#btnReadScenario')) {
                 const q = state.questions[state.currentIndex];
-                if (q && q.type === 'speaking') speakWord(q.options[q.correct]);
+                if (q && q.type === 'speaking') speakNative(q.options[q.correct]);
             }
         }, true);
 
