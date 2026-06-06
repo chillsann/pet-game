@@ -94,23 +94,88 @@
 
         // ===== 语法题库 =====
         let GRAMMAR_CORE = [
-            { question: "By the time we arrived, the film ___ .", options: ["had started", "has started", "started", "was starting"], correct: 0, explanation: "过去完成时" },
-            { question: "If I ___ enough money, I would travel.", options: ["have", "had", "will have", "would have"], correct: 1, explanation: "虚拟语气" },
-            { question: "The new bridge ___ last year.", options: ["was built", "built", "is built", "has built"], correct: 0, explanation: "被动语态" }
+            { question: "By the time we arrived, the film ___ .", options: ["had started", "has started", "started", "was starting"], correct: 0, explanation: "过去完成时表示"过去的过去"" },
+            { question: "She ___ in London since 2019.", options: ["lives", "is living", "has lived", "live"], correct: 2, explanation: "since + 时间点用现在完成时" },
+            { question: "I ___ a great movie last night.", options: ["see", "saw", "have seen", "am seeing"], correct: 1, explanation: "last night 是过去时间，用一般过去时" },
+            { question: "They ___ football right now.", options: ["play", "plays", "are playing", "played"], correct: 2, explanation: "right now 表示此刻正在进行的动作，用现在进行时" },
+            { question: "The train ___ at 9 o'clock every morning.", options: ["leave", "leaves", "is leaving", "has left"], correct: 1, explanation: "日常规律动作用一般现在时，第三人称单数加 -s" },
+            { question: "While I ___ dinner, the phone rang.", options: ["have", "was having", "had", "am having"], correct: 1, explanation: "过去进行时描述背景动作，与一般过去时连用" },
+            { question: "She ___ her homework before she went out.", options: ["finishes", "has finished", "had finished", "is finishing"], correct: 2, explanation: "went out（过去）之前完成的动作，用过去完成时" },
+            { question: "We ___ to the beach tomorrow.", options: ["go", "goes", "will go", "are going"], correct: 2, explanation: "tomorrow 表示将来，用 will 或 be going to" },
+            { question: "I ___ never ___ to Japan.", options: ["have ... been", "am ... going", "was ... went", "did ... go"], correct: 0, explanation: "never 常与现在完成时连用，表示"从未去过"" },
+            { question: "If I ___ enough money, I would travel.", options: ["have", "had", "will have", "would have"], correct: 1, explanation: "虚拟语气表示与现在事实相反，用一般过去时" },
+            { question: "If it ___ tomorrow, we will stay at home.", options: ["rained", "rains", "will rain", "would rain"], correct: 1, explanation: "真实条件句，if 从句用一般现在时，主句用 will" },
+            { question: "If I ___ you, I would apologize.", options: ["am", "was", "were", "be"], correct: 2, explanation: "虚拟语气中 be 动词统一用 were" },
+            { question: "You will pass the exam if you ___ harder.", options: ["will study", "study", "studied", "would study"], correct: 1, explanation: "真实条件句，if 从句用一般现在时" },
+            { question: "The new bridge ___ last year.", options: ["was built", "built", "is built", "has built"], correct: 0, explanation: "last year 过去时间，桥是被建造，用一般过去时的被动语态" },
+            { question: "English ___ all over the world.", options: ["speaks", "is speaking", "is spoken", "has spoken"], correct: 2, explanation: "英语被说，用一般现在时的被动语态" },
+            { question: "The letter ___ yesterday.", options: ["sent", "was sent", "is sent", "has sent"], correct: 1, explanation: "yesterday 过去时间，信被寄出，用一般过去时被动" },
+            { question: "You ___ wear a seatbelt in the car.", options: ["must", "can", "might", "could"], correct: 0, explanation: "must 表示必须，系安全带是法律规定" },
+            { question: "___ I open the window? It's hot in here.", options: ["May", "Must", "Need", "Ought"], correct: 0, explanation: "May 用于礼貌地请求许可" },
+            { question: "You ___ finish your homework before playing games.", options: ["should", "could", "might", "can"], correct: 0, explanation: "should 表示建议、应该做某事" },
+            { question: "This book is ___ than that one.", options: ["interesting", "more interesting", "most interesting", "interestinger"], correct: 1, explanation: "多音节形容词比较级加 more" },
+            { question: "She is the ___ student in the class.", options: ["good", "better", "best", "well"], correct: 2, explanation: "最高级用 best，表示"最好的"" },
+            { question: "My house is ___ than yours.", options: ["big", "bigger", "biggest", "more big"], correct: 1, explanation: "单音节形容词比较级加 -er" },
+            { question: "The man ___ lives next door is a doctor.", options: ["which", "who", "whom", "whose"], correct: 1, explanation: "who 指代人，在定语从句中作主语" },
+            { question: "This is the book ___ I bought yesterday.", options: ["who", "which", "whose", "whom"], correct: 1, explanation: "which 指代物，在定语从句中作宾语" },
+            { question: "The exam is ___ Monday morning.", options: ["in", "on", "at", "by"], correct: 1, explanation: "具体某一天的上午/下午用 on" },
+            { question: "I usually wake up ___ 7 o'clock.", options: ["in", "on", "at", "by"], correct: 2, explanation: "具体时间点用 at" },
+            { question: "She's interested ___ learning Chinese.", options: ["at", "in", "on", "for"], correct: 1, explanation: "be interested in 是固定搭配" },
+            { question: "She said she ___ to the park the next day.", options: ["go", "went", "would go", "goes"], correct: 2, explanation: "间接引语中，将来时变为 would + 动词原形" },
+            { question: "He told me that he ___ the film already.", options: ["sees", "has seen", "had seen", "will see"], correct: 2, explanation: "间接引语中，现在完成时变为过去完成时" },
+            { question: "Can I have ___ water, please?", options: ["a", "some", "many", "few"], correct: 1, explanation: "water 是不可数名词，用 some 修饰" },
+            { question: "There aren't ___ apples left.", options: ["some", "much", "many", "a little"], correct: 2, explanation: "apples 是可数名词复数，否定句中用 many" },
+            { question: "How ___ sugar do you need?", options: ["many", "much", "few", "lot"], correct: 1, explanation: "sugar 是不可数名词，用 much 提问数量" },
+            { question: "You like pizza, ___?", options: ["do you", "don't you", "are you", "aren't you"], correct: 1, explanation: "反义疑问句，肯定陈述 + 否定反问" },
+            { question: "She hasn't finished, ___?", options: ["has she", "hasn't she", "did she", "does she"], correct: 0, explanation: "否定陈述 + 肯定反问" },
+            { question: "I enjoy ___ to music in my free time.", options: ["listen", "listening", "to listen", "listened"], correct: 1, explanation: "enjoy 后接动名词 (doing)" },
+            { question: "She decided ___ a new language.", options: ["learn", "learning", "to learn", "learned"], correct: 2, explanation: "decide 后接不定式 (to do)" },
         ];
-        while (GRAMMAR_CORE.length < 200) GRAMMAR_CORE.push({...GRAMMAR_CORE[GRAMMAR_CORE.length % GRAMMAR_CORE.length]});
+        
 
         let SPEAKING_CORE = [
             { scenario: "你刚认识一个人，想了解他的兴趣爱好：", options: ["What do you like doing in your free time?", "You like free time?", "Tell me your hobby now.", "Do you free time?"], correct: 0 },
-            { scenario: "在讨论中你想表达自己的观点：", options: ["In my opinion, it's a great idea.", "I say it's good.", "My idea is good.", "Good idea I think."], correct: 0 }
+            { scenario: "在讨论中你想表达自己的观点：", options: ["In my opinion, it's a great idea.", "I say it's good.", "My idea is good.", "Good idea I think."], correct: 0 },
+            { scenario: "你想邀请朋友去看电影：", options: ["Would you like to see a movie with me?", "You go movie me?", "I want you go cinema.", "Let's to go movie."], correct: 0 },
+            { scenario: "在餐厅你想点餐：", options: ["I'd like to order, please.", "I want eating now.", "Give me food.", "I order please."], correct: 0 },
+            { scenario: "你想问路去博物馆：", options: ["Excuse me, could you tell me how to get to the museum?", "Where museum?", "Tell me museum way.", "How museum go?"], correct: 0 },
+            { scenario: "朋友生病了，你想表达关心：", options: ["I'm sorry to hear that. I hope you feel better soon.", "You sick? OK.", "Sorry you ill, bye.", "Feel well you."], correct: 0 },
+            { scenario: "你想借用朋友的笔：", options: ["Could I borrow your pen, please?", "Give me pen.", "I take your pen.", "You have pen give me."], correct: 0 },
+            { scenario: "别人夸你英语说得好，怎么回应：", options: ["Thank you! I'm still learning though.", "Yes I'm good.", "No I'm bad.", "Of course I speak well."], correct: 0 },
+            { scenario: "你想约朋友周末打网球：", options: ["Would you like to play tennis this weekend?", "You play tennis weekend?", "Let's tennis play weekend.", "I want play tennis you."], correct: 0 },
+            { scenario: "在商店你想试穿衣服：", options: ["Could I try this on, please?", "I want try.", "Let me wear this.", "Give me to try clothes."], correct: 0 },
+            { scenario: "你想知道现在几点：", options: ["Excuse me, do you have the time?", "What time is now?", "Tell me time.", "How many time?"], correct: 0 },
+            { scenario: "朋友生日到了，你想送祝福：", options: ["Happy birthday! I hope you have a wonderful day.", "Happy you born day.", "Birthday you good.", "I hope birthday you happy."], correct: 0 },
+            { scenario: "你想预订酒店房间：", options: ["I'd like to book a room for two nights, please.", "I want room for sleep.", "Give me one room.", "Hotel room I need."], correct: 0 },
+            { scenario: "在机场办理登机：", options: ["Could I have your passport and ticket, please?", "Give passport.", "I show you ticket.", "Check me in now."], correct: 0 },
+            { scenario: "朋友邀请你去聚会，但你很忙：", options: ["I'd love to, but I'm afraid I'm busy this weekend.", "No I can't.", "I busy sorry.", "I don't want go party."], correct: 0 },
+            { scenario: "你想点一杯咖啡：", options: ["I'd like a cup of coffee, please.", "Give me coffee.", "I want drink coffee.", "Coffee me one."], correct: 0 },
+            { scenario: "介绍你的家庭成员：", options: ["There are four people in my family: my parents, my sister and me.", "My family has four people.", "I have father mother sister.", "Four family me."], correct: 0 },
+            { scenario: "描述你的家乡：", options: ["I come from a small town near the sea. It's very quiet and beautiful.", "My hometown is good.", "I from small town.", "Hometown near sea quiet."], correct: 0 },
+            { scenario: "你迷路了，想请人帮忙：", options: ["I'm sorry to bother you, but I'm lost. Can you help me?", "I lost. Help.", "Where am I? Tell me.", "I can't find way help."], correct: 0 },
+            { scenario: "在聚会上做自我介绍：", options: ["Hi everyone, my name is Tom and I'm from Beijing.", "Hello I Tom.", "My name Tom Beijing.", "I'm call Tom from Beijing."], correct: 0 },
+            { scenario: "你想知道朋友周末过得怎么样：", options: ["How was your weekend? Did you do anything fun?", "Weekend you how?", "What did you weekend?", "Your weekend good?"], correct: 0 },
+            { scenario: "推荐一个你去过的好地方：", options: ["I'd recommend visiting the Summer Palace. It's really beautiful.", "Go Summer Palace.", "You should visit Summer Palace good.", "Summer Palace nice."], correct: 0 },
         ];
-        while (SPEAKING_CORE.length < 150) SPEAKING_CORE.push({...SPEAKING_CORE[SPEAKING_CORE.length % SPEAKING_CORE.length]});
+        
 
         // ===== 游戏引擎 =====
         function shuffleArray(arr) { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-        function extendQuestions(core, target) { const bank = [...core]; while (bank.length < target) { const src = core[Math.floor(Math.random() * core.length)]; const newOpts = shuffleArray(src.options); const newItem = { ...src, options: newOpts }; newItem.correct = newOpts.indexOf(src.options[src.correct]); bank.push(newItem); } return bank; }
-        let GRAMMAR_QUESTIONS = extendQuestions(GRAMMAR_CORE, 1500).map(q => ({ ...q, type: 'grammar' }));
-        let SPEAKING_QUESTIONS = extendQuestions(SPEAKING_CORE, 500).map(q => ({ ...q, type: 'speaking' }));
+        function extendQuestions(core, target) {
+            const bank = [];
+            const targetCount = Math.min(target, core.length);
+            const shuffled = [...core].sort(() => Math.random() - 0.5);
+            for (let i = 0; i < targetCount; i++) {
+                const src = shuffled[i];
+                const newOpts = shuffleArray([...src.options]);
+                const newItem = { ...src, options: newOpts };
+                newItem.correct = newOpts.indexOf(src.options[src.correct]);
+                bank.push(newItem);
+            }
+            return bank;
+        }
+        let GRAMMAR_QUESTIONS = extendQuestions(GRAMMAR_CORE, 36).map(q => ({ ...q, type: 'grammar' }));
+        let SPEAKING_QUESTIONS = extendQuestions(SPEAKING_CORE, 22).map(q => ({ ...q, type: 'speaking' }));
 
         const TOTAL_LIVES = 3;
         const QUESTION_TIME = 30;
