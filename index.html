@@ -336,7 +336,7 @@
         document.addEventListener('click', function(e) {
             if (e.target.id === 'btnReadScenario' || e.target.closest('#btnReadScenario')) {
                 const q = state.questions[state.currentIndex];
-                if (q && q.type === 'speaking') speakNative(q.options[q.correct]);
+                if (q && q.type === 'speaking') speakWord(q.options[q.correct]);
             }
         }, true);
 
