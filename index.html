@@ -63,10 +63,12 @@
         let _ttsAudio = null;
         let _currentUtterance = null;
         let _speechKeepAlive = null;
+        // 手机端 TTS 候队列：在非手势上下文中触发的语音，排队等下一次点击/触摸再播放
+        let _pendingTTS = null;
+        let _pendingFallbackTimer = null;
+
         function getAudioCtx() { if (!_audioCtx) { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if (_audioCtx.state === 'suspended') _audioCtx.resume(); return _audioCtx; }
         function playSound(type) { try { const ctx = getAudioCtx(); if (ctx.state === 'suspended') return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); gain.gain.setValueAtTime(0.4, ctx.currentTime); if (type === 'correct') { osc.type = 'sine'; osc.frequency.setValueAtTime(523, ctx.currentTime); osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4); } else if (type === 'wrong') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, ctx.currentTime); osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35); } } catch(e) {} }
-        
-        // speakNative replaced by speakNow/speakNowFallback
 
         function getTTSUrl(text) {
             return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2';
@@ -76,6 +78,7 @@
             return text.replace(/\[name\]/g, 'Tom').replace(/[\[\]]/g, '').trim();
         }
 
+        // 尝试用有道 TTS 播放音频，自动处理手机端自动播放限制
         function speakNow(text) {
             if (!text) return;
             text = cleanTTSText(text);
@@ -86,23 +89,59 @@
                 }
                 _ttsAudio.pause();
                 _ttsAudio.src = getTTSUrl(text);
-                const fallbackTimer = setTimeout(() => { speakNowFallback(text); }, 2000);
-                _ttsAudio.onplay = () => { clearTimeout(fallbackTimer); };
-                _ttsAudio.onerror = () => { clearTimeout(fallbackTimer); speakNowFallback(text); };
-                _ttsAudio.play().catch(() => {
-                    clearTimeout(fallbackTimer);
-                    speakNowFallback(text);
-                });
+                _ttsAudio.onerror = null;
+                _ttsAudio.onplay = null;
+
+                // 方案A：直接在用户手势中播放（桌面部/iPad 正常）
+                const playPromise = _ttsAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // 播放成功，清除排队
+                        _pendingTTS = null;
+                        clearTimeout(_pendingFallbackTimer);
+                    }).catch(() => {
+                        // 方案B：手机端自动播放被拦截 → 排队等下次用户点击/触摸
+                        _pendingTTS = text;
+                        // 2秒后备方案：SpeechSynthesis
+                        clearTimeout(_pendingFallbackTimer);
+                        _pendingFallbackTimer = setTimeout(() => {
+                            if (_pendingTTS === text) {
+                                _pendingTTS = null;
+                                trySpeechSynthesis(text);
+                            }
+                        }, 2000);
+                    });
+                }
             } catch(e) {
-                speakNowFallback(text);
+                trySpeechSynthesis(text);
             }
         }
 
-        function speakNowFallback(text) {
+        // 在捕获阶段拦截用户手势，播放被排队的 TTS
+        function flushPendingTTS() {
+            if (_pendingTTS) {
+                const text = _pendingTTS;
+                _pendingTTS = null;
+                clearTimeout(_pendingFallbackTimer);
+                if (_ttsAudio) {
+                    _ttsAudio.src = getTTSUrl(text);
+                    _ttsAudio.play().catch(() => {
+                        trySpeechSynthesis(text);
+                    });
+                }
+            }
+        }
+        // 使用捕获阶段（true），确保在按钮 onclick 之前执行
+        document.addEventListener('click', flushPendingTTS, true);
+        document.addEventListener('touchstart', flushPendingTTS, { capture: true, passive: true });
+
+        // 语音合成回退（为手机端做了优化）
+        function trySpeechSynthesis(text) {
             if (!('speechSynthesis' in window)) return;
             const synth = window.speechSynthesis;
             clearInterval(_speechKeepAlive);
             synth.cancel();
+            // 部分移动端浏览器需要在 setTimeout 中调用
             setTimeout(() => {
                 try { getAudioCtx(); } catch(e) {}
                 _currentUtterance = new SpeechSynthesisUtterance(text);
