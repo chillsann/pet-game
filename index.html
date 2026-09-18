@@ -107,6 +107,109 @@
         .timer-num { font-size: 1.2rem; font-weight: bold; color: #e67e22; min-width: 90px; }
         /* 发音贴士 */
         .pron-tip { background: #fdf2e9; border-left: 5px solid #e67e22; border-radius: 12px; padding: 9px 12px; font-size: 0.88rem; color: #7e5109; text-align: left; margin-top: 8px; line-height: 1.5; }
+        /* ===== 切水果背单词（内置模块） ===== */
+        #fsRoot { position: fixed; inset: 0; z-index: 9999; display: none;
+            background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+            font-family: 'Segoe UI', 'Comic Sans MS', '幼圆', sans-serif;
+            overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; }
+        #fsRoot.fs-open { display: block; }
+        #fsRoot * { box-sizing: border-box; }
+        #fsCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+        #fsHud { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; }
+        .fs-top { display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0)); }
+        .fs-chips { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+        .fs-chip { background: rgba(255,255,255,.92); border: 2px solid rgba(142,68,173,.35);
+            border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: bold;
+            color: #2c3e50; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+        .fs-chip b { font-size: 15px; color: #8e44ad; font-variant-numeric: tabular-nums; }
+        .fs-chip.gold b { color: #e67e22; }
+        .fs-chip.ok b { color: #27ae60; }
+        .fs-chip.bad b { color: #e74c3c; }
+        .fs-spacer { flex: 1; }
+        .fs-tools { display: flex; gap: 7px; pointer-events: auto; }
+        .fs-tbtn { background: rgba(255,255,255,.92); border: 2px solid rgba(142,68,173,.35);
+            border-radius: 14px; width: 42px; height: 40px; font-size: 17px; cursor: pointer;
+            display: grid; place-items: center; box-shadow: 0 3px 0 rgba(108,52,131,.35);
+            transition: .12s; color: #2c3e50; padding: 0; }
+        .fs-tbtn:hover { background: #fff; }
+        .fs-tbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(108,52,131,.35); }
+        .fs-tbtn.fs-off { opacity: .42; }
+        .fs-prompt-wrap { display: flex; justify-content: center; margin-top: 2px; }
+        .fs-prompt { min-width: 280px; max-width: min(760px, 94vw); text-align: center;
+            background: rgba(255,255,255,.95); border: 4px solid rgba(142,68,173,.4);
+            border-radius: 30px; padding: 12px 26px 14px;
+            box-shadow: 0 12px 30px rgba(108,52,131,.25); transition: border-color .2s, box-shadow .2s; }
+        .fs-prompt.fs-good { border-color: #2ecc71; box-shadow: 0 0 34px rgba(46,204,113,.55); }
+        .fs-prompt.fs-bad { border-color: #e74c3c; box-shadow: 0 0 34px rgba(231,76,60,.5); }
+        .fs-ptag { font-size: 12px; letter-spacing: 2px; color: #8e44ad; font-weight: bold; }
+        .fs-pword { font-size: clamp(26px, 5.4vw, 46px); font-weight: bold; line-height: 1.18;
+            margin-top: 2px; color: #2c3e50; word-break: break-word; }
+        .fs-psub { font-size: 13px; color: #7f8c8d; margin-top: 5px; min-height: 18px; }
+        .fs-spk { pointer-events: auto; cursor: pointer; border: none; background: #e67e22; color: #fff;
+            border-radius: 12px; padding: 3px 11px; font-size: 14px; margin-left: 8px;
+            vertical-align: middle; box-shadow: 0 3px 0 #b85c0c; font-weight: bold; }
+        .fs-spk:active { transform: translateY(2px); box-shadow: 0 1px 0 #b85c0c; }
+        #fsToast { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%) scale(.85);
+            font-size: clamp(30px, 7vw, 64px); font-weight: bold; opacity: 0; pointer-events: none;
+            text-shadow: 0 0 18px rgba(255,255,255,.9), 0 4px 12px rgba(0,0,0,.35);
+            letter-spacing: 2px; text-align: center; }
+        #fsToast.fs-show { animation: fsPop .85s ease-out forwards; }
+        #fsToast.fs-good { color: #27ae60; }
+        #fsToast.fs-bad { color: #c0392b; }
+        @keyframes fsPop {
+            0% { opacity: 0; transform: translate(-50%,-50%) scale(.6); }
+            22% { opacity: 1; transform: translate(-50%,-50%) scale(1.08); }
+            70% { opacity: 1; transform: translate(-50%,-56%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%,-72%) scale(.96); }
+        }
+        .fs-screen { position: absolute; inset: 0; display: none; place-items: center; padding: 16px;
+            background: rgba(60,30,80,.42); backdrop-filter: blur(6px); overflow: auto; z-index: 3; }
+        .fs-screen.fs-show { display: grid; }
+        .fs-panel { width: min(660px, 96vw); background: rgba(255,255,255,.97); border-radius: 34px;
+            padding: 24px 24px 20px; box-shadow: 0 25px 50px rgba(0,0,0,.35); text-align: center; }
+        .fs-panel h1 { font-size: clamp(24px, 5vw, 38px); color: #8e44ad; line-height: 1.25; }
+        .fs-panel h1 span { color: #e67e22; }
+        .fs-sub { color: #5d6d7e; font-size: 14px; margin-top: 8px; line-height: 1.7; }
+        .fs-sub b { color: #8e44ad; }
+        .fs-grp { margin-top: 16px; }
+        .fs-grp > label { display: block; font-size: 12px; letter-spacing: 1.5px; color: #8e44ad;
+            font-weight: bold; margin-bottom: 7px; }
+        .fs-seg { display: flex; gap: 8px; flex-wrap: wrap; }
+        .fs-seg button { flex: 1 1 120px; padding: 10px 8px; border-radius: 18px; cursor: pointer;
+            font-size: 14px; font-weight: bold; color: #2c3e50; background: #f4f0f8;
+            border: 3px solid #d7c9e6; transition: .14s; font-family: inherit; }
+        .fs-seg button:hover { background: #ede4f7; }
+        .fs-seg button.fs-on { background: #8e44ad; border-color: #6c3483; color: #fff;
+            box-shadow: 0 4px 0 #6c3483; }
+        .fs-seg button small { display: block; font-weight: normal; font-size: 11px; opacity: .8; margin-top: 2px; }
+        .fs-meta { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+        .fs-meta .fs-box { flex: 1 1 100px; background: #f4f0f8; border-radius: 16px; padding: 9px 6px; }
+        .fs-meta .fs-box b { display: block; font-size: 21px; color: #8e44ad; font-variant-numeric: tabular-nums; }
+        .fs-meta .fs-box span { font-size: 11px; color: #7f8c8d; }
+        .fs-cta { width: 100%; margin-top: 18px; padding: 15px; border: none; border-radius: 50px;
+            cursor: pointer; font-size: 19px; font-weight: bold; letter-spacing: 3px; color: #fff;
+            background: #e67e22; box-shadow: 0 5px 0 #b85c0c; font-family: inherit; transition: .12s; }
+        .fs-cta:active { transform: translateY(3px); box-shadow: 0 2px 0 #b85c0c; }
+        .fs-cta.fs-ghost { background: #95a5a6; box-shadow: 0 5px 0 #7f8c8d; font-size: 15px;
+            letter-spacing: 1px; margin-top: 9px; padding: 12px; }
+        .fs-rw { display: flex; align-items: center; gap: 10px; background: #fdf6e3;
+            border-left: 4px solid #e74c3c; border-radius: 12px; padding: 9px 12px; font-size: 14px;
+            text-align: left; }
+        .fs-rw b { color: #2c3e50; }
+        .fs-rw .fs-cn { color: #e67e22; margin-left: 6px; }
+        .fs-rw i { font-style: normal; color: #95a5a6; font-size: 12px; margin-left: auto; }
+        #fsReview { max-height: 32vh; overflow: auto; margin-top: 10px; display: flex;
+            flex-direction: column; gap: 6px; }
+        .fs-hint { font-size: 12px; color: #7f8c8d; margin-top: 10px; line-height: 1.7; text-align: left; }
+        .fs-kbd { background: #ede4f7; border-radius: 5px; padding: 1px 6px; font-family: monospace; }
+        body.fs-lock { overflow: hidden; }
+        @media (max-width: 520px) {
+            .fs-chip { font-size: 11px; padding: 4px 9px; }
+            .fs-chip b { font-size: 13px; }
+            .fs-tbtn { width: 36px; height: 34px; font-size: 15px; }
+            .fs-prompt { padding: 10px 14px 12px; border-radius: 22px; }
+        }
     </style>
 </head>
 <body>
@@ -675,7 +778,7 @@
 
         function renderStart() {
             const streak = getStreak();
-            container.innerHTML = `<div class="dino">🐉</div><h1>PET 全能冒险岛</h1><p style="font-size:1rem;">📚有效词汇 ${VALID_WORDS.length}+ | 📐语法1500 | 🗣️口语500</p><p style="color:#8e44ad;font-weight:bold;">B1 Preliminary · 剑桥PET备考</p><button class="btn start-btn" onclick="game.startDaily()">📅 每日打卡</button><button class="btn start-btn" style="background:#8e44ad;box-shadow:0 5px 0 #6c3483;" onclick="game.startGame()">自由闯关 🚀</button><br><button class="btn village-btn" onclick="game.openSpeakVillage()">🏘️ 口语村打卡</button><p style="margin-top:15px;">🔥 连续打卡 ${streak} 天 · 🏘️ 口语村已打卡 ${speakDoneCount()}/${SPEAK_TOTAL_DAYS} 天</p>`;
+            container.innerHTML = `<div class="dino">🐉</div><h1>PET 全能冒险岛</h1><p style="font-size:1rem;">📚有效词汇 ${VALID_WORDS.length}+ | 📐语法1500 | 🗣️口语500</p><p style="color:#8e44ad;font-weight:bold;">B1 Preliminary · 剑桥PET备考</p><button class="btn start-btn" onclick="game.startDaily()">📅 每日打卡</button><button class="btn start-btn" style="background:#8e44ad;box-shadow:0 5px 0 #6c3483;" onclick="game.startGame()">自由闯关 🚀</button><button class="btn start-btn" style="background:#16a085;box-shadow:0 5px 0 #0e6655;" onclick="FruitSlicer.open()">🍉 切水果背单词</button><br><button class="btn village-btn" onclick="game.openSpeakVillage()">🏘️ 口语村打卡</button><p style="margin-top:15px;">🔥 连续打卡 ${streak} 天 · 🏘️ 口语村已打卡 ${speakDoneCount()}/${SPEAK_TOTAL_DAYS} 天</p>`;
         }
         function renderDaily() {
             const target = getDailyTarget();
@@ -1129,10 +1232,911 @@
         function goToStart() { clearInterval(state.timerInterval); state.screen='start'; render(); }
         function restart() { clearInterval(state.timerInterval); startGame(); }
 
-        window.game = { startGame, startDaily, setDailyGoal, resetDaily, startDailyPractice, selectWorld, answer, continueAdventure, goToStart, restart, toggleSound:function(){ unlockAll(); playSound('correct'); }, startReviewRedo, skipReview, nextQuestion, openSpeakVillage, openSpeakDay, pickSpeakWeek, pickSpeakDay, finishSpeakDay, speakTimerStart };
+        /* ===== 切水果背单词：把完整词库交给切水果模块 ===== */
+        window.FruitSlicerBank = (function () {
+            var posOf = {};
+            ['nouns', 'verbs', 'adjectives'].forEach(function (k) {
+                (PET_LEXICON[k] || []).forEach(function (w) { if (!posOf[w]) posOf[w] = k; });
+            });
+            var posCn = { nouns: '名词', verbs: '动词', adjectives: '形容词' };
+            return VALID_WORDS.map(function (w) {
+                var p = posOf[w] || 'other';
+                return { w: w, cn: WORD_MEANING[w], pos: p, posCn: posCn[p] || '其他' };
+            });
+        })();
+        window.game = { startGame, startDaily, setDailyGoal, resetDaily, startDailyPractice, selectWorld, answer, continueAdventure, goToStart, restart, toggleSound:function(){ unlockAll(); playSound('correct'); }, startReviewRedo, skipReview, nextQuestion, openSpeakVillage, openSpeakDay, pickSpeakWeek, pickSpeakDay, finishSpeakDay, speakTimerStart, speakWord };
         render();
         console.log("PET有效词汇量:", VALID_WORDS.length);
     })();
+</script>
+<div id="fsRoot" aria-hidden="true">
+  <canvas id="fsCanvas"></canvas>
+  <div id="fsHud">
+    <div class="fs-top">
+      <div class="fs-chips">
+        <div class="fs-chip gold">分数 <b id="fsScore">0</b></div>
+        <div class="fs-chip">连击 <b id="fsCombo">0</b></div>
+        <div class="fs-chip ok">正确 <b id="fsRight">0</b></div>
+        <div class="fs-chip bad">失误 <b id="fsWrong">0</b></div>
+        <div class="fs-chip">❤️ <b id="fsLife">3</b></div>
+      </div>
+      <div class="fs-spacer"></div>
+      <div class="fs-tools">
+        <button class="fs-tbtn" id="fsBtnSound" title="音效开关">🔊</button>
+        <button class="fs-tbtn" id="fsBtnSpeak" title="单词发音开关">🗣️</button>
+        <button class="fs-tbtn" id="fsBtnPause" title="暂停（空格）">⏸</button>
+        <button class="fs-tbtn" id="fsBtnClose" title="退出切水果">✖</button>
+      </div>
+    </div>
+    <div class="fs-prompt-wrap">
+      <div class="fs-prompt" id="fsPrompt">
+        <div class="fs-ptag" id="fsPTag">准 备 开 始</div>
+        <div class="fs-pword" id="fsPWord">PET 切水果</div>
+        <div class="fs-psub" id="fsPSub">按住鼠标 / 手指划动切开正确的水果</div>
+      </div>
+    </div>
+  </div>
+  <div id="fsToast"></div>
+
+  <div class="fs-screen fs-show" id="fsStartScreen">
+    <div class="fs-panel">
+      <h1>🍉 PET 切水果<span>背单词</span></h1>
+      <div class="fs-sub">
+        看题目 → 划开写着正确答案的水果。切错或让正确答案掉下去都会掉一颗心，三颗心用完结束。<br>
+        词库直接取自「PET 全能冒险岛」的完整词汇库：<b id="fsBankInfo">加载中…</b>
+      </div>
+      <div class="fs-grp">
+        <label>出题方向</label>
+        <div class="fs-seg" id="fsSegMode">
+          <button data-v="cn2en" class="fs-on">看中文 · 切英文<small>中 → 英</small></button>
+          <button data-v="en2cn">看英文 · 切中文<small>英 → 中</small></button>
+          <button data-v="mix">混合出题<small>随机切换</small></button>
+        </div>
+      </div>
+      <div class="fs-grp">
+        <label>词性范围</label>
+        <div class="fs-seg" id="fsSegPos">
+          <button data-v="all" class="fs-on">全部词性<small>词量最大</small></button>
+          <button data-v="nouns">名词<small>n.</small></button>
+          <button data-v="verbs">动词<small>v.</small></button>
+          <button data-v="adjectives">形容词<small>adj.</small></button>
+        </div>
+      </div>
+      <div class="fs-grp">
+        <label>速度</label>
+        <div class="fs-seg" id="fsSegDiff">
+          <button data-v="easy" class="fs-on">🐢 慢速<small>看得清，慢慢来</small></button>
+          <button data-v="normal">🚶 标准<small>推荐</small></button>
+          <button data-v="hard">🏃 挑战<small>下落更快</small></button>
+        </div>
+      </div>
+      <div class="fs-meta">
+        <div class="fs-box"><b id="fsBest">0</b><span>最高分</span></div>
+        <div class="fs-box"><b id="fsMastered">0</b><span>已答对词数</span></div>
+        <div class="fs-box"><b id="fsPool">0</b><span>本局可用词</span></div>
+      </div>
+      <button class="fs-cta" id="fsBtnStart">开 始 游 戏</button>
+      <button class="fs-cta fs-ghost" id="fsBtnBack">← 返回冒险岛</button>
+      <div class="fs-hint">
+        操作：按住鼠标左键拖动切开水果，或直接点击水果。手机上用手指划。<br>
+        快捷键：<span class="fs-kbd">空格</span> 暂停　<span class="fs-kbd">Enter</span> 开始 / 重开　<span class="fs-kbd">M</span> 静音　<span class="fs-kbd">Esc</span> 退出
+      </div>
+    </div>
+  </div>
+
+  <div class="fs-screen" id="fsPauseScreen">
+    <div class="fs-panel">
+      <h1>已 暂 停</h1>
+      <div class="fs-sub">休息一下，单词不会跑掉的。</div>
+      <button class="fs-cta" id="fsBtnResume">继 续 游 戏</button>
+      <button class="fs-cta fs-ghost" id="fsBtnQuit">结束本局</button>
+    </div>
+  </div>
+
+  <div class="fs-screen" id="fsOverScreen">
+    <div class="fs-panel">
+      <h1 id="fsOverTitle">游 戏 结 束</h1>
+      <div class="fs-sub" id="fsOverSub"></div>
+      <div class="fs-meta">
+        <div class="fs-box"><b id="fsOScore">0</b><span>本局得分</span></div>
+        <div class="fs-box"><b id="fsORight">0</b><span>切对</span></div>
+        <div class="fs-box"><b id="fsOWrong">0</b><span>切错 / 漏掉</span></div>
+        <div class="fs-box"><b id="fsOAcc">0%</b><span>准确率</span></div>
+        <div class="fs-box"><b id="fsOCombo">0</b><span>最高连击</span></div>
+        <div class="fs-box"><b id="fsOBest">0</b><span>历史最高</span></div>
+      </div>
+      <div class="fs-grp" id="fsReviewWrap"><label>本局错题本 · 复习一下</label></div>
+      <div id="fsReview"></div>
+      <button class="fs-cta" id="fsBtnAgain">再 来 一 局</button>
+      <button class="fs-cta fs-ghost" id="fsBtnHome">返回切水果首页</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   PET 切水果背单词 —— 内置模块（供 PET 全能冒险岛调用）
+   词库复用本页 PET_LEXICON / WORD_MEANING（约 2700 词）
+   全部变量封装在 IIFE 内，只对外暴露 window.FruitSlicer
+   ========================================================= */
+(function () {
+  'use strict';
+
+  var FONT = "'Segoe UI','Comic Sans MS','幼圆',sans-serif";
+  var LS = { best: 'fs_best', mastered: 'fs_mastered', settings: 'fs_settings' };
+
+  /* ---------- 小工具 ---------- */
+  var rnd = function (a, b) { return a + Math.random() * (b - a); };
+  var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+  var pick = function (a) { return a[Math.floor(Math.random() * a.length)]; };
+  function shuffle(a) {
+    var r = a.slice();
+    for (var i = r.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = r[i]; r[i] = r[j]; r[j] = t; }
+    return r;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+
+  /* ---------- 速度档位（已整体调慢：一局约 2.2–3.0 秒滞空） ---------- */
+  var DIFF = {
+    easy:   { name: '慢速', base: 3, ramp: 0.22, max: 4, apex: [0.74, 0.92], grav: 620, stagger: 0.30 },
+    normal: { name: '标准', base: 3, ramp: 0.34, max: 5, apex: [0.68, 0.88], grav: 790, stagger: 0.25 },
+    hard:   { name: '挑战', base: 4, ramp: 0.46, max: 6, apex: [0.62, 0.82], grav: 990, stagger: 0.21 }
+  };
+
+  var FRUIT_COLORS = [
+    ['#ff5b6e', '#c1243c'], ['#ff9f43', '#c1621a'], ['#ffd93d', '#c9a010'],
+    ['#6bd968', '#2f8f36'], ['#4ec9ff', '#1a76b5'], ['#a48bff', '#6244c4'],
+    ['#ff7ad9', '#b83a94'], ['#3ddc97', '#178f5f'], ['#ff6b6b', '#a51f2e']
+  ];
+
+  var settings = Object.assign(
+    { mode: 'cn2en', pos: 'all', diff: 'easy', sound: true, speak: true },
+    lsGet(LS.settings, {})
+  );
+  if (!DIFF[settings.diff]) settings.diff = 'easy';
+
+  /* ---------- DOM ---------- */
+  var root, cv, ctx, W = 0, H = 0, DPR = 1, visible = false;
+  var el = {};
+  function $(id) { return document.getElementById(id); }
+
+  function initDom() {
+    root = $('fsRoot'); cv = $('fsCanvas');
+    if (!root || !cv) return false;
+    ctx = cv.getContext('2d');
+    ['fsScore', 'fsCombo', 'fsRight', 'fsWrong', 'fsLife', 'fsBest', 'fsMastered', 'fsPool',
+      'fsBankInfo', 'fsPrompt', 'fsPTag', 'fsPWord', 'fsPSub', 'fsToast',
+      'fsStartScreen', 'fsPauseScreen', 'fsOverScreen', 'fsReview', 'fsReviewWrap',
+      'fsOverTitle', 'fsOverSub', 'fsOScore', 'fsORight', 'fsOWrong', 'fsOAcc', 'fsOCombo', 'fsOBest',
+      'fsBtnSound', 'fsBtnSpeak', 'fsBtnPause', 'fsBtnClose', 'fsBtnStart', 'fsBtnBack',
+      'fsBtnResume', 'fsBtnQuit', 'fsBtnAgain', 'fsBtnHome',
+      'fsSegMode', 'fsSegPos', 'fsSegDiff'].forEach(function (id) { el[id] = $(id); });
+    return true;
+  }
+
+  function resize() {
+    if (!cv) return;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = root.clientWidth || window.innerWidth;
+    H = root.clientHeight || window.innerHeight;
+    cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+
+  /* ---------- 音效 ---------- */
+  var AC = null;
+  function audio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = false; } }
+    if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (e) { } }
+    return AC;
+  }
+  function tone(freq, dur, type, vol, slideTo) {
+    if (!settings.sound) return;
+    var ac = audio(); if (!ac) return;
+    var t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(40, slideTo), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.14, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+  }
+  var SFX = {
+    whoosh: function () { tone(760, 0.12, 'sawtooth', 0.05, 240); },
+    right: function (n) {
+      var b = 660 * Math.pow(1.06, Math.min(n, 12));
+      tone(b, 0.13, 'triangle', 0.16);
+      setTimeout(function () { tone(b * 1.5, 0.18, 'triangle', 0.14); }, 85);
+    },
+    wrong: function () { tone(190, 0.34, 'square', 0.12, 80); },
+    miss: function () { tone(260, 0.28, 'sine', 0.1, 120); },
+    over: function () { [520, 420, 330, 240].forEach(function (f, i) { setTimeout(function () { tone(f, 0.3, 'triangle', 0.13); }, i * 140); }); }
+  };
+
+  function speak(text) {
+    if (!settings.speak || !text) return;
+    // 优先复用冒险岛的发音（有道 TTS + 回退）
+    try {
+      if (window.game && typeof window.game.speakWord === 'function') { window.game.speakWord(text); return; }
+    } catch (e) { }
+    try {
+      if (!('speechSynthesis' in window)) return;
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-GB'; u.rate = 0.9;
+      speechSynthesis.speak(u);
+    } catch (e) { }
+  }
+
+  /* ---------- 状态 ---------- */
+  var G = {
+    state: 'ready', score: 0, combo: 0, maxCombo: 0, life: 3,
+    right: 0, wrong: 0, round: 0, target: null, dir: 'cn2en',
+    fruits: [], parts: [], halves: [], trail: [],
+    shake: 0, roundTimer: 0, nextRoundIn: 0,
+    pool: [], bank: [], masteredSet: new Set(),
+    wrongLog: [], slicing: false, lastPt: null,
+    pendingOver: false, prevState: null
+  };
+
+  /* ---------- 词库 ---------- */
+  function activePool() {
+    var p = G.bank;
+    if (settings.pos && settings.pos !== 'all') {
+      var f = p.filter(function (x) { return x.pos === settings.pos; });
+      if (f.length >= 20) p = f;
+    }
+    return p;
+  }
+
+  /* ---------- 画布度量 ---------- */
+  function measureLabel(text, size) {
+    ctx.font = 'bold ' + size + 'px ' + FONT;
+    return ctx.measureText(text).width;
+  }
+  // 根据文字长度决定水果半径（上限 70，保证同时能放下多个）
+  function fruitRadius(text) {
+    var w = measureLabel(text, 22);
+    return clamp(20 + w * 0.42, 40, 70);
+  }
+
+  /* ---------- HUD ---------- */
+  function updateHUD() {
+    if (!el.fsScore) return;
+    el.fsScore.textContent = G.score;
+    el.fsCombo.textContent = G.combo;
+    el.fsRight.textContent = G.right;
+    el.fsWrong.textContent = G.wrong;
+    el.fsLife.textContent = G.life;
+    el.fsBest.textContent = lsGet(LS.best, 0);
+    el.fsMastered.textContent = G.masteredSet.size;
+    el.fsPool.textContent = activePool().length;
+  }
+  function toast(text, kind) {
+    var t = el.fsToast; if (!t) return;
+    t.textContent = text; t.className = '';
+    void t.offsetWidth;
+    t.className = 'fs-show ' + (kind || '');
+  }
+  function setPrompt(tag, wordHtml, subHtml, cls) {
+    el.fsPTag.textContent = tag;
+    el.fsPWord.innerHTML = wordHtml;
+    el.fsPSub.innerHTML = subHtml || '';
+    el.fsPrompt.className = 'fs-prompt' + (cls ? ' ' + cls : '');
+  }
+
+  /* ---------- 开局 ---------- */
+  function startGame() {
+    G.score = 0; G.combo = 0; G.maxCombo = 0; G.life = 3;
+    G.right = 0; G.wrong = 0; G.round = 0;
+    G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
+    G.shake = 0; G.wrongLog = []; G.pendingOver = false;
+    G.bank = G.bank.length ? G.bank : (window.FruitSlicerBank || []);
+    G.pool = activePool();
+    hide(el.fsStartScreen); hide(el.fsOverScreen); hide(el.fsPauseScreen);
+    updateHUD();
+    nextRound();
+  }
+
+  function nextRound() {
+    G.round++;
+    var pool = G.pool.length >= 10 ? G.pool : G.bank;
+    var target = pick(pool);
+    G.target = target;
+    G.dir = settings.mode === 'mix' ? (Math.random() < 0.5 ? 'cn2en' : 'en2cn') : settings.mode;
+    var labelOf = function (w) { return G.dir === 'cn2en' ? w.w : w.cn; };
+    var targetLabel = labelOf(target);
+
+    var d = DIFF[settings.diff] || DIFF.easy;
+    var want = clamp(Math.round(d.base + (G.round - 1) * d.ramp), d.base, d.max);
+
+    // 选干扰项：标签不重复、释义不与目标相同
+    // （词库里“选择/choose/select/option”这类同义中文很多，必须排除）
+    var used = {};
+    used[targetLabel.toLowerCase()] = 1;
+    var chosen = [target];
+    var rMax = fruitRadius(targetLabel);
+    var shuffled = shuffle(pool);
+    for (var i = 0; i < shuffled.length && chosen.length < want; i++) {
+      var w = shuffled[i];
+      if (w.w === target.w) continue;
+      if (w.cn === target.cn) continue;
+      var L = labelOf(w), lk = L.toLowerCase();
+      if (used[lk]) continue;
+      var r = fruitRadius(L);
+      var nr = Math.max(rMax, r);
+      // 宽度放不下就停止增加水果（手机上自动减少）
+      if ((chosen.length + 1) * nr * 1.62 > W - 20) break;
+      used[lk] = 1; chosen.push(w); rMax = nr;
+    }
+    if (chosen.length < 2 && shuffled.length > 1) {
+      for (var j = 0; j < shuffled.length; j++) {
+        var w2 = shuffled[j];
+        if (w2.w !== target.w && w2.cn !== target.cn) { chosen.push(w2); break; }
+      }
+    }
+
+    var all = shuffle(chosen);
+    var total = all.length;
+    var slots = shuffle(all.map(function (_, k) { return k; }));
+    var grav = d.grav;
+    var padX = Math.min(90, W * 0.10);
+
+    G.fruits = all.map(function (w, k) {
+      var slot = slots[k];
+      var x = padX + (W - padX * 2) * (total === 1 ? 0.5 : slot / (total - 1)) + rnd(-18, 18);
+      var apex = H * rnd(d.apex[0], d.apex[1]);
+      var lbl = labelOf(w);
+      var r0 = fruitRadius(lbl);
+      return {
+        w: w, x: clamp(x, r0 + 4, W - r0 - 4), y: H + 90,
+        vx: rnd(-40, 40) * (W / 1200 + 0.5),
+        vy: -Math.sqrt(2 * grav * apex),
+        r: r0, label: lbl,
+        isTarget: w.w === target.w,
+        col: pick(FRUIT_COLORS),
+        sliced: false, dead: false, born: false,
+        spawnDelay: k * d.stagger,
+        wob: rnd(0, Math.PI * 2)
+      };
+    });
+
+    if (G.dir === 'cn2en') {
+      setPrompt('切 出 对 应 的 英 文 单 词', esc(target.cn),
+        '第 ' + G.round + ' 题 · ' + esc(target.posCn || '') + ' · 词库 ' + G.bank.length + ' 词');
+    } else {
+      setPrompt('切 出 对 应 的 中 文 意 思',
+        esc(target.w) + ' <button class="fs-spk" id="fsSpeakBtn">🔊 读</button>',
+        '第 ' + G.round + ' 题 · ' + esc(target.posCn || '') + ' · 词库 ' + G.bank.length + ' 词');
+      var sb = $('fsSpeakBtn');
+      if (sb) sb.onclick = function () { speak(target.w); };
+      speak(target.w);
+    }
+    G.state = 'playing';
+  }
+
+  /* ---------- 回合结束 ---------- */
+  function endRound(result, fruit) {
+    if (G.state !== 'playing') return;
+    G.state = 'roundEnd';
+    G.roundTimer = 0;
+
+    if (result === 'right') {
+      G.combo++;
+      G.maxCombo = Math.max(G.maxCombo, G.combo);
+      var gain = 100 + (G.combo - 1) * 25 + G.round * 5;
+      G.score += gain; G.right++;
+      G.masteredSet.add(G.target.w);
+      lsSet(LS.mastered, Array.from(G.masteredSet));
+      SFX.right(G.combo);
+      toast('+' + gain + (G.combo > 1 ? '  x' + G.combo : ''), 'good');
+      setPrompt('正 确 ✅', esc(G.dir === 'cn2en' ? G.target.w : G.target.cn),
+        esc(G.target.w) + ' = ' + esc(G.target.cn), 'fs-good');
+      if (fruit) burst(fruit.x, fruit.y, fruit.col, 26);
+      if (G.dir === 'en2cn') speak(G.target.w);
+      G.nextRoundIn = 0.8;
+    } else {
+      G.combo = 0; G.wrong++;
+      if (result === 'wrong') { SFX.wrong(); toast('切错了！', 'bad'); }
+      else { SFX.miss(); toast('漏掉了…', 'bad'); }
+      G.life = Math.max(0, G.life - 1);
+      G.shake = 1;
+      G.wrongLog.push({ w: G.target.w, cn: G.target.cn, posCn: G.target.posCn, why: result === 'wrong' ? '切错' : '漏掉' });
+      setPrompt('正 确 答 案',
+        esc(G.target.w) + ' <button class="fs-spk" id="fsSpeakBtn2">🔊</button>',
+        esc(G.target.cn) + '　（' + (result === 'wrong' ? '切错了' : '没切到') + '）', 'fs-bad');
+      var sb = $('fsSpeakBtn2');
+      if (sb) sb.onclick = function () { speak(G.target.w); };
+      speak(G.target.w);
+      G.fruits.forEach(function (f) { if (f.isTarget) f.hl = true; });
+      G.nextRoundIn = 1.7;
+    }
+    updateHUD();
+    if (G.life <= 0) G.pendingOver = true;
+  }
+
+  function gameOver() {
+    G.state = 'over';
+    SFX.over();
+    var best = Math.max(lsGet(LS.best, 0), G.score);
+    lsSet(LS.best, best);
+    if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) { } }
+
+    el.fsOScore.textContent = G.score;
+    el.fsORight.textContent = G.right;
+    el.fsOWrong.textContent = G.wrong;
+    var total = G.right + G.wrong;
+    var acc = total ? G.right / total : 0;
+    el.fsOAcc.textContent = (total ? Math.round(acc * 100) : 0) + '%';
+    el.fsOCombo.textContent = G.maxCombo;
+    el.fsOBest.textContent = best;
+
+    var rank = '继续加油！多背几遍就记住了。';
+    if (G.score >= 4000 && acc >= 0.85) rank = '太强了！这词汇量已经稳过 PET 了 🏆';
+    else if (G.score >= 2000 && acc >= 0.7) rank = '很棒！保持这个节奏 💪';
+    else if (acc >= 0.6) rank = '不错哦，再练几轮就熟了。';
+    el.fsOverSub.textContent = rank + '　本局共答 ' + total + ' 题。';
+
+    el.fsReview.innerHTML = '';
+    if (G.wrongLog.length === 0) {
+      el.fsReviewWrap.style.display = 'none';
+    } else {
+      el.fsReviewWrap.style.display = 'block';
+      var seen = {}, uniq = [];
+      G.wrongLog.forEach(function (x) { if (!seen[x.w]) { seen[x.w] = 1; uniq.push(x); } });
+      uniq.forEach(function (x) {
+        var d = document.createElement('div');
+        d.className = 'fs-rw';
+        d.innerHTML = '<b>' + esc(x.w) + '</b><span class="fs-cn">' + esc(x.cn) + '</span><i>' +
+          esc(x.posCn || '') + ' · ' + esc(x.why) + '</i>';
+        el.fsReview.appendChild(d);
+      });
+    }
+    show(el.fsOverScreen);
+    updateHUD();
+  }
+
+  /* ---------- 粒子 ---------- */
+  function burst(x, y, col, n) {
+    for (var i = 0; i < n; i++) {
+      var a = rnd(0, Math.PI * 2), sp = rnd(60, 340);
+      G.parts.push({
+        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+        r: rnd(3, 8), life: rnd(0.45, 0.95), t: 0,
+        c: Math.random() < 0.5 ? col[0] : col[1]
+      });
+    }
+  }
+  function makeHalves(f, dir) {
+    var nx = Math.cos(dir + Math.PI / 2), ny = Math.sin(dir + Math.PI / 2);
+    [-1, 1].forEach(function (s) {
+      G.halves.push({
+        x: f.x, y: f.y, r: f.r, col: f.col, label: f.label,
+        vx: f.vx * 0.5 + nx * s * rnd(90, 190),
+        vy: f.vy * 0.45 + ny * s * rnd(90, 190) - 40,
+        rot: 0, vrot: s * rnd(2, 5), t: 0, life: 1.6, side: s
+      });
+    });
+    burst(f.x, f.y, f.col, 18);
+  }
+
+  /* ---------- 输入 ---------- */
+  function segCircle(x1, y1, x2, y2, cx, cy, r) {
+    var dx = x2 - x1, dy = y2 - y1, len2 = dx * dx + dy * dy, t = 0;
+    if (len2 > 0.0001) t = clamp(((cx - x1) * dx + (cy - y1) * dy) / len2, 0, 1);
+    var px = x1 + t * dx, py = y1 + t * dy;
+    return (px - cx) * (px - cx) + (py - cy) * (py - cy) <= r * r;
+  }
+  function trySlice(x1, y1, x2, y2) {
+    if (G.state !== 'playing') return;
+    var hitTarget = false, hitWrong = false;
+    for (var i = 0; i < G.fruits.length; i++) {
+      var f = G.fruits[i];
+      if (f.sliced || f.dead || !f.born) continue;
+      if (segCircle(x1, y1, x2, y2, f.x, f.y, f.r * 0.95)) {
+        f.sliced = true;
+        makeHalves(f, Math.atan2(y2 - y1, x2 - x1));
+        SFX.whoosh();
+        if (f.isTarget) hitTarget = true; else hitWrong = true;
+      }
+    }
+    if (hitTarget) endRound('right', G.fruits.filter(function (f) { return f.isTarget; })[0]);
+    else if (hitWrong) endRound('wrong', G.fruits.filter(function (f) { return f.sliced && !f.isTarget; })[0]);
+    else SFX.whoosh();
+  }
+  function posOf(e) {
+    var r = cv.getBoundingClientRect();
+    var p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX - r.left, y: p.clientY - r.top };
+  }
+  function onDown(e) {
+    if (G.state !== 'playing') return;
+    var p = posOf(e);
+    G.slicing = true; G.lastPt = p;
+    G.trail.push({ x: p.x, y: p.y, t: 0 });
+    trySlice(p.x, p.y, p.x, p.y);
+  }
+  function onMove(e) {
+    if (!visible) return;
+    var p = posOf(e);
+    if (G.slicing && G.lastPt) trySlice(G.lastPt.x, G.lastPt.y, p.x, p.y);
+    if (G.slicing) {
+      G.trail.push({ x: p.x, y: p.y, t: 0 });
+      if (G.trail.length > 90) G.trail.shift();
+    }
+    G.lastPt = p;
+    if (G.slicing && e.cancelable) e.preventDefault();
+  }
+  function onUp() { G.slicing = false; G.lastPt = null; }
+
+  /* ---------- 更新 ---------- */
+  function update(dt) {
+    for (var i = 0; i < G.trail.length; i++) G.trail[i].t += dt;
+    while (G.trail.length && G.trail[0].t > 0.19) G.trail.shift();
+
+    var d = DIFF[settings.diff] || DIFF.easy;
+
+    if (G.state === 'playing' || G.state === 'roundEnd') {
+      for (var k = 0; k < G.fruits.length; k++) {
+        var f = G.fruits[k];
+        if (f.spawnDelay > 0) { f.spawnDelay -= dt; continue; }
+        f.born = true;
+        f.vy += d.grav * dt;
+        f.x += f.vx * dt; f.y += f.vy * dt; f.wob += dt * 3;
+        if (f.x < f.r) { f.x = f.r; f.vx = Math.abs(f.vx); }
+        if (f.x > W - f.r) { f.x = W - f.r; f.vx = -Math.abs(f.vx); }
+        if (f.y - f.r > H + 60) f.dead = true;
+      }
+      if (G.state === 'playing') {
+        var t = null;
+        for (var m = 0; m < G.fruits.length; m++) if (G.fruits[m].isTarget) { t = G.fruits[m]; break; }
+        if (t && t.dead && !t.sliced) endRound('miss', t);
+      }
+      if (G.state === 'roundEnd') {
+        G.roundTimer += dt;
+        G.fruits.forEach(function (f) { if (f.hl) f.wob += dt * 10; });
+        if (G.roundTimer >= G.nextRoundIn) {
+          if (G.pendingOver) { G.pendingOver = false; gameOver(); }
+          else nextRound();
+        }
+      }
+    }
+
+    for (var a = G.parts.length - 1; a >= 0; a--) {
+      var p = G.parts[a];
+      p.t += dt;
+      if (p.t >= p.life) { G.parts.splice(a, 1); continue; }
+      p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+    for (var b = G.halves.length - 1; b >= 0; b--) {
+      var h = G.halves[b];
+      h.t += dt;
+      if (h.t >= h.life || h.y - h.r > H + 200) { G.halves.splice(b, 1); continue; }
+      h.vy += d.grav * dt * 0.85;
+      h.x += h.vx * dt; h.y += h.vy * dt; h.rot += h.vrot * dt;
+    }
+    if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 3.2);
+  }
+
+  /* ---------- 绘制 ---------- */
+  function roundRectPath(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function drawFruitBody(x, y, r, col, wob) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y + r * 0.16, r * 0.98, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(90,50,110,.22)'; ctx.fill();
+    var g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.42, r * 0.12, x, y, r * 1.08);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.18, col[0]); g.addColorStop(1, col[1]);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 0.98, r * 1.02, Math.sin(wob) * 0.05, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.34, y - r * 0.40, r * 0.22, r * 0.14, -0.6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + r * 0.30, y - r * 0.98, r * 0.26, r * 0.12, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#4fbf5a'; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x, y - r * 0.92); ctx.lineTo(x - r * 0.06, y - r * 1.14);
+    ctx.lineWidth = Math.max(2, r * 0.09); ctx.strokeStyle = '#7a5230'; ctx.stroke();
+    ctx.restore();
+  }
+  function drawLabel(text, x, y, r) {
+    var size = Math.min(r * 0.74, 26);
+    var w = measureLabel(text, size);
+    var maxW = r * 1.66;
+    while (w > maxW && size > 10) { size -= 1; w = measureLabel(text, size); }
+    ctx.save();
+    ctx.font = 'bold ' + size + 'px ' + FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(2.5, size * 0.24);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(25,15,40,.82)';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);   // 背景透明，露出 CSS 渐变
+
+    ctx.save();
+    if (G.shake > 0) { var s = G.shake * 12; ctx.translate(rnd(-s, s), rnd(-s, s)); }
+
+    G.halves.forEach(function (h) {
+      var a = clamp(1 - h.t / h.life, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(h.x, h.y); ctx.rotate(h.rot);
+      ctx.beginPath();
+      ctx.arc(0, 0, h.r, h.side > 0 ? -Math.PI / 2 : Math.PI / 2, h.side > 0 ? Math.PI / 2 : Math.PI * 1.5);
+      ctx.closePath();
+      var g = ctx.createRadialGradient(-h.r * 0.3, -h.r * 0.3, h.r * 0.1, 0, 0, h.r);
+      g.addColorStop(0, h.col[0]); g.addColorStop(1, h.col[1]);
+      ctx.fillStyle = g; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 0, h.r * 0.74, h.side > 0 ? -Math.PI / 2 : Math.PI / 2, h.side > 0 ? Math.PI / 2 : Math.PI * 1.5);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,244,228,.8)'; ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = a * 0.5;
+      ctx.font = 'bold 15px ' + FONT;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(h.label, h.x, h.y);
+      ctx.restore();
+    });
+
+    G.parts.forEach(function (p) {
+      var a = clamp(1 - p.t / p.life, 0, 1);
+      ctx.globalAlpha = a;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI * 2);
+      ctx.fillStyle = p.c; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    G.fruits.forEach(function (f) {
+      if (f.sliced || f.dead || !f.born) return;
+      if (f.hl) {
+        ctx.save();
+        var pulse = 1 + Math.sin(f.wob * 2) * 0.08;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 1.34 * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(39,174,96,.95)'; ctx.lineWidth = 5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 1.34 * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(39,174,96,.25)'; ctx.lineWidth = 14; ctx.stroke();
+        ctx.restore();
+      }
+      drawFruitBody(f.x, f.y, f.r, f.col, f.wob);
+      drawLabel(f.label, f.x, f.y, f.r);
+    });
+
+    if (G.trail.length > 1) {
+      for (var i = 1; i < G.trail.length; i++) {
+        var a2 = G.trail[i], b2 = G.trail[i - 1];
+        var life = 1 - a2.t / 0.19;
+        ctx.beginPath();
+        ctx.moveTo(b2.x, b2.y); ctx.lineTo(a2.x, a2.y);
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 13 * life;
+        ctx.strokeStyle = 'rgba(142,68,173,' + (0.30 * life) + ')';
+        ctx.stroke();
+        ctx.lineWidth = 6 * life;
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.92 * life) + ')';
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    if (G.state === 'roundEnd' && G.nextRoundIn > 0) {
+      var w = Math.min(W * 0.5, 420), x = (W - w) / 2, y = H - 24;
+      var pr = clamp(G.roundTimer / G.nextRoundIn, 0, 1);
+      ctx.fillStyle = 'rgba(255,255,255,.45)';
+      roundRectPath(x, y, w, 6, 3); ctx.fill();
+      ctx.fillStyle = G.life > 1 ? 'rgba(39,174,96,.95)' : 'rgba(231,76,60,.95)';
+      roundRectPath(x, y, w * pr, 6, 3); ctx.fill();
+    }
+  }
+
+  /* ---------- 主循环 ---------- */
+  var last = 0;
+  function loop(now) {
+    requestAnimationFrame(loop);
+    if (!visible) { last = now; return; }
+    var dt = last ? Math.min((now - last) / 1000, 1 / 30) : 1 / 60;
+    last = now;
+    if (G.state !== 'paused' && G.state !== 'ready') update(dt);
+    render();
+  }
+
+  /* ---------- 显示 / 隐藏 ---------- */
+  function show(n) { if (n) n.classList.add('fs-show'); }
+  function hide(n) { if (n) n.classList.remove('fs-show'); }
+
+  function pauseGame() {
+    if (G.state === 'playing' || G.state === 'roundEnd') {
+      G.prevState = G.state; G.state = 'paused';
+      show(el.fsPauseScreen);
+    }
+  }
+  function resumeGame() {
+    hide(el.fsPauseScreen);
+    if (G.state === 'paused') {
+      G.state = G.prevState || 'playing';
+      if (G.state === 'playing' && G.fruits.length === 0) nextRound();
+      last = 0;
+    }
+  }
+
+  /* ---------- 打开 / 关闭 ---------- */
+  function open(bank) {
+    if (!initDom()) { alert('切水果模块初始化失败：找不到 #fsRoot'); return; }
+    if (bank && bank.length) G.bank = bank;
+    else if (!G.bank.length) G.bank = window.FruitSlicerBank || [];
+    if (!G.bank.length) { alert('词库为空，无法开始切水果。'); return; }
+
+    G.masteredSet = new Set(lsGet(LS.mastered, []));
+    G.pool = activePool();
+    G.state = 'ready';
+    G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
+
+    root.classList.add('fs-open');
+    root.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('fs-lock');
+    visible = true;
+    resize();
+
+    el.fsBankInfo.textContent = G.bank.length + ' 个 PET 单词（含中文释义）';
+    el.fsStartScreen && show(el.fsStartScreen);
+    hide(el.fsOverScreen); hide(el.fsPauseScreen);
+    setPrompt('准 备 开 始', 'PET 切水果', '按住鼠标 / 手指划动切开正确的水果', '');
+    syncSegs();
+    updateHUD();
+    last = 0;
+  }
+
+  function close() {
+    if (!visible) return;
+    if (G.state === 'playing' || G.state === 'roundEnd') {
+      if (!confirm('正在游戏中，确定要退出切水果吗？')) return;
+    }
+    visible = false;
+    G.state = 'ready';
+    root.classList.remove('fs-open');
+    root.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('fs-lock');
+    if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) { } }
+  }
+
+  /* ---------- 分段按钮 ---------- */
+  function bindSeg(id, key) {
+    var box = $(id); if (!box) return;
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (!b || !b.dataset.v) return;
+      var kids = box.querySelectorAll('button');
+      for (var i = 0; i < kids.length; i++) kids[i].classList.remove('fs-on');
+      b.classList.add('fs-on');
+      settings[key] = b.dataset.v;
+      lsSet(LS.settings, settings);
+      if (key === 'pos') { G.pool = activePool(); updateHUD(); }
+    });
+  }
+  function syncSegs() {
+    [['fsSegMode', 'mode'], ['fsSegPos', 'pos'], ['fsSegDiff', 'diff']].forEach(function (p) {
+      var box = $(p[0]); if (!box) return;
+      var kids = box.querySelectorAll('button');
+      for (var i = 0; i < kids.length; i++) {
+        kids[i].classList.toggle('fs-on', kids[i].dataset.v === settings[p[1]]);
+      }
+    });
+    paintToggles();
+  }
+  function paintToggles() {
+    if (!el.fsBtnSound) return;
+    el.fsBtnSound.classList.toggle('fs-off', !settings.sound);
+    el.fsBtnSpeak.classList.toggle('fs-off', !settings.speak);
+    el.fsBtnSound.textContent = settings.sound ? '🔊' : '🔇';
+    el.fsBtnSpeak.textContent = settings.speak ? '🗣️' : '🤐';
+  }
+
+  /* ---------- 事件绑定（只绑一次） ---------- */
+  var bound = false;
+  function bindEvents() {
+    if (bound) return; bound = true;
+
+    cv.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    cv.addEventListener('touchstart', function (e) { onDown(e); e.preventDefault(); }, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+    window.addEventListener('resize', function () { if (visible) resize(); });
+
+    el.fsBtnClose.onclick = close;
+    el.fsBtnBack.onclick = close;
+    el.fsBtnStart.onclick = function () { audio(); startGame(); };
+    el.fsBtnAgain.onclick = function () { audio(); startGame(); };
+    el.fsBtnHome.onclick = function () {
+      G.state = 'ready';
+      hide(el.fsOverScreen); show(el.fsStartScreen);
+      G.pool = activePool(); updateHUD();
+    };
+    el.fsBtnPause.onclick = function () {
+      if (G.state === 'paused') resumeGame(); else pauseGame();
+    };
+    el.fsBtnResume.onclick = resumeGame;
+    el.fsBtnQuit.onclick = function () { hide(el.fsPauseScreen); gameOver(); };
+    el.fsBtnSound.onclick = function () {
+      settings.sound = !settings.sound; lsSet(LS.settings, settings); paintToggles();
+      if (settings.sound) SFX.whoosh();
+    };
+    el.fsBtnSpeak.onclick = function () {
+      settings.speak = !settings.speak; lsSet(LS.settings, settings); paintToggles();
+      if (settings.speak) speak('hello');
+    };
+
+    bindSeg('fsSegMode', 'mode');
+    bindSeg('fsSegPos', 'pos');
+    bindSeg('fsSegDiff', 'diff');
+
+    // 捕获阶段抢在冒险岛的快捷键之前处理
+    window.addEventListener('keydown', function (e) {
+      if (!visible) return;
+      var k = (e.key || '').toLowerCase();
+      if (k === 'escape') { e.stopPropagation(); close(); return; }
+      e.stopPropagation();
+      if (k === ' ') {
+        e.preventDefault();
+        if (G.state === 'paused') resumeGame(); else pauseGame();
+      } else if (k === 'enter') {
+        if (el.fsStartScreen.classList.contains('fs-show')) el.fsBtnStart.click();
+        else if (el.fsOverScreen.classList.contains('fs-show')) el.fsBtnAgain.click();
+        else if (G.state === 'paused') resumeGame();
+      } else if (k === 'm') {
+        el.fsBtnSound.click();
+      }
+    }, true);
+
+    window.addEventListener('blur', function () { if (visible) pauseGame(); });
+  }
+
+  /* ---------- 对外接口 ---------- */
+  window.FruitSlicer = {
+    open: function (bank) {
+      if (!initDom()) return;
+      bindEvents();
+      open(bank);
+    },
+    close: close,
+    isOpen: function () { return visible; },
+    bankSize: function () { return (window.FruitSlicerBank || []).length; }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { initDom(); requestAnimationFrame(loop); });
+  } else {
+    initDom(); requestAnimationFrame(loop);
+  }
+})();
+
 </script>
 </body>
 </html>
