@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <!-- 发音走百度 TTS：该接口会拒绝带外部 Referer 的请求（返回空内容 → 没声音），必须显式不发 Referer -->
+    <meta name="referrer" content="no-referrer">
+    <link rel="preconnect" href="https://fanyi.baidu.com" crossorigin>
+    <link rel="dns-prefetch" href="https://fanyi.baidu.com">
     <title>PET 全能冒险岛 · 完整词汇库</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -210,6 +214,9 @@
             .fs-tbtn { width: 36px; height: 34px; font-size: 15px; }
             .fs-prompt { padding: 10px 14px 12px; border-radius: 22px; }
         }
+        /* 喇叭按钮的发音状态 */
+        .spk.spk-on { background: #16a085; box-shadow: 0 3px 0 #0e6655; }
+        .spk.spk-fail { background: #bdc3c7; box-shadow: 0 3px 0 #95a5a6; }
     </style>
 </head>
 <body>
@@ -218,108 +225,175 @@
     (function() {
         // ===== 音频系统 =====
         let _audioCtx = null;
-        let _ttsAudio = null;
+        // ===== 发音模块 =====
+        // 2026-09-18 踩坑：有道 dictvoice 只对"已收录的常见短语"返回音频，本游戏自编的句子
+        // 一律 HTTP 500（实测 10 条高频句 10/10 成功、10 条游戏句 0/10）→ 现象就是"有的喇叭
+        // 响、有的不响"。现改为百度 TTS 为主源（实测 60/60 成功、124 字符长句正常），有道兜底。
+        // 注意：百度该接口会拒绝带外部 Referer 的请求（返回空内容 → 静音），页面已设 no-referrer。
+        let _ttsSeq = 0;            // 点击序号，用来丢弃过期回调
+        let _curAudio = null;       // 当前正在用的音频元素
         let _currentUtterance = null;
         let _speechKeepAlive = null;
-        // 手机端 TTS 候队列：在非手势上下文中触发的语音，排队等下一次点击/触摸再播放
-        let _pendingTTS = null;
-        let _pendingFallbackTimer = null;
+        let _ttsPlayingText = null; // 正在朗读的文本（清洗后），用于判断回调是否过期
+        let _ttsRawEnc = null;      // 正在朗读的「原文」encodeURIComponent，用于匹配喇叭按钮
 
         function getAudioCtx() { if (!_audioCtx) { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if (_audioCtx.state === 'suspended') _audioCtx.resume(); return _audioCtx; }
         function playSound(type) { try { const ctx = getAudioCtx(); if (ctx.state === 'suspended') return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); gain.gain.setValueAtTime(0.4, ctx.currentTime); if (type === 'correct') { osc.type = 'sine'; osc.frequency.setValueAtTime(523, ctx.currentTime); osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4); } else if (type === 'wrong') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, ctx.currentTime); osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.3); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35); } } catch(e) {} }
 
-        function getTTSUrl(text) {
-            return 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2';
-        }
+        const TTS_SPEED = 2;  // 百度 gettts 语速：1 最慢 … 5 最快。给孩子听，用偏慢的
 
         function cleanTTSText(text) {
-            return text.replace(/\[name\]/g, 'Tom').replace(/[\[\]]/g, '').trim();
+            return String(text == null ? '' : text)
+                .replace(/\[name\]/g, 'Tom')
+                .replace(/[\[\]]/g, '')
+                .replace(/_{2,}/g, ' ')              // 填空占位符读不出来，换成停顿
+                .replace(/[\u2018\u2019]/g, "'")
+                .replace(/[\u201C\u201D]/g, '"')
+                .replace(/\s+/g, ' ')
+                .trim();
         }
 
-        // 尝试用有道 TTS 播放音频，自动处理手机端自动播放限制
-        function speakNow(text) {
-            if (!text) return;
-            text = cleanTTSText(text);
-            try {
-                if (!_ttsAudio) {
-                    _ttsAudio = new Audio();
-                    _ttsAudio.preload = 'auto';
-                }
-                _ttsAudio.pause();
-                _ttsAudio.src = getTTSUrl(text);
-                _ttsAudio.onerror = null;
-                _ttsAudio.onplay = null;
+        // 发音源优先级：百度（对任意句子有效）→ 有道（对常见短语音质更好）
+        function ttsSources(text) {
+            const enc = encodeURIComponent(text);
+            return [
+                'https://fanyi.baidu.com/gettts?lan=en&text=' + enc + '&spd=' + TTS_SPEED + '&source=web',
+                'https://dict.youdao.com/dictvoice?audio=' + enc + '&type=2'
+            ];
+        }
 
-                // 方案A：直接在用户手势中播放（桌面部/iPad 正常）
-                const playPromise = _ttsAudio.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        // 播放成功，清除排队
-                        _pendingTTS = null;
-                        clearTimeout(_pendingFallbackTimer);
-                    }).catch(() => {
-                        // 方案B：手机端自动播放被拦截 → 排队等下次用户点击/触摸
-                        _pendingTTS = text;
-                        // 2秒后备方案：SpeechSynthesis
-                        clearTimeout(_pendingFallbackTimer);
-                        _pendingFallbackTimer = setTimeout(() => {
-                            if (_pendingTTS === text) {
-                                _pendingTTS = null;
-                                trySpeechSynthesis(text);
-                            }
-                        }, 2000);
-                    });
-                }
-            } catch(e) {
-                trySpeechSynthesis(text);
+        // 更新喇叭按钮的视觉状态：⏳ 加载中 / 🔊 播放中 / 🔇 读不出来
+        // 按钮上的 data-text 存的是「原文」的 encodeURIComponent，而送去 TTS 的是清洗后的文本，
+        // 两者对含 ____ / [name] 的句子并不相等 → 必须用原文匹配，否则按钮不会亮。
+        function setSpeakerState(state) {
+            const enc = _ttsRawEnc;
+            const btns = document.querySelectorAll('[data-action="spk-say"]');
+            for (let i = 0; i < btns.length; i++) {
+                const b = btns[i];
+                const isMe = enc !== null && b.getAttribute('data-text') === enc;
+                b.classList.toggle('spk-on', isMe && (state === 'loading' || state === 'playing'));
+                b.classList.toggle('spk-fail', isMe && state === 'fail');
+                if (isMe && state === 'loading') b.textContent = '⏳';
+                else if (isMe && state === 'fail') b.textContent = '🔇';
+                else b.textContent = '🔊';
             }
         }
 
-        // 在捕获阶段拦截用户手势，播放被排队的 TTS
-        function flushPendingTTS() {
-            if (_pendingTTS) {
-                const text = _pendingTTS;
-                _pendingTTS = null;
-                clearTimeout(_pendingFallbackTimer);
-                if (_ttsAudio) {
-                    _ttsAudio.src = getTTSUrl(text);
-                    _ttsAudio.play().catch(() => {
-                        trySpeechSynthesis(text);
-                    });
-                }
+        function stopSpeaking() {
+            _ttsSeq++;
+            _ttsPlayingText = null;
+            _ttsRawEnc = null;
+            if (_curAudio) {
+                try { _curAudio.pause(); _curAudio.removeAttribute('src'); } catch (e) {}
+                _curAudio = null;
             }
-        }
-        // 使用捕获阶段（true），确保在按钮 onclick 之前执行
-        document.addEventListener('click', flushPendingTTS, true);
-        document.addEventListener('touchstart', flushPendingTTS, { capture: true, passive: true });
-
-        // 语音合成回退（为手机端做了优化）
-        function trySpeechSynthesis(text) {
-            if (!('speechSynthesis' in window)) return;
-            const synth = window.speechSynthesis;
+            if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch (e) {} }
             clearInterval(_speechKeepAlive);
-            synth.cancel();
-            // 部分移动端浏览器需要在 setTimeout 中调用
-            setTimeout(() => {
-                try { getAudioCtx(); } catch(e) {}
-                _currentUtterance = new SpeechSynthesisUtterance(text);
-                _currentUtterance.lang = 'en-US';
-                _currentUtterance.rate = 0.85;
-                _currentUtterance.volume = 1.0;
-                _speechKeepAlive = setInterval(() => {
-                    if (synth.speaking) synth.resume();
-                    else clearInterval(_speechKeepAlive);
-                }, 200);
-                _currentUtterance.onend = () => { clearInterval(_speechKeepAlive); };
-                _currentUtterance.onerror = () => { clearInterval(_speechKeepAlive); };
-                synth.speak(_currentUtterance);
-                setTimeout(() => { if (synth.paused) synth.resume(); }, 150);
-            }, 100);
+            setSpeakerState(null);
+        }
+
+        function speakNow(rawText) {
+            if (!rawText) return;
+            const spoken = cleanTTSText(rawText);
+            if (!spoken) return;
+            stopSpeaking();
+            const seq = _ttsSeq;
+            _ttsPlayingText = spoken;
+            try { _ttsRawEnc = encodeURIComponent(rawText); } catch (e) { _ttsRawEnc = null; }
+            setSpeakerState('loading');
+            playSource(0, spoken, seq);
+        }
+
+        // 依次尝试各发音源：拿到音频就停，全部失败才退到系统语音。
+        // 不再用"排队 + 2 秒后回退"那套——它会让上一个句子的音频在下一次点击时
+        // 抢在正确音频之前播放，是"点了没声/串音"的元凶之一。
+        function playSource(idx, text, seq) {
+            if (seq !== _ttsSeq) return;
+            const srcs = ttsSources(text);
+            if (idx >= srcs.length) {
+                _ttsPlayingText = null;
+                trySpeechSynthesis(text, seq);
+                return;
+            }
+
+            const audio = new Audio();
+            audio.preload = 'auto';
+            audio.setAttribute('playsinline', '');
+            let settled = false;
+            let timer = null;
+            _curAudio = audio;
+
+            const giveUp = function () {
+                if (settled || seq !== _ttsSeq) return;
+                settled = true;
+                clearTimeout(timer);
+                try { audio.pause(); audio.removeAttribute('src'); } catch (e) {}
+                playSource(idx + 1, text, seq);
+            };
+            const gotSound = function () {
+                if (settled || seq !== _ttsSeq) return false;
+                if (audio.readyState >= 2 || audio.currentTime > 0) {
+                    settled = true;
+                    clearTimeout(timer);
+                    _ttsPlayingText = null;
+                    setSpeakerState('playing');
+                    return true;
+                }
+                return false;
+            };
+
+            audio.addEventListener('error', giveUp);
+            audio.addEventListener('stalled', giveUp);
+            audio.addEventListener('canplay', function () { if (gotSound()) audio.play().catch(function () {}); });
+            audio.addEventListener('playing', gotSound);
+            audio.addEventListener('ended', function () {
+                if (_ttsPlayingText === text) { _ttsPlayingText = null; _ttsRawEnc = null; setSpeakerState(null); }
+            });
+
+            // 4 秒还没拿到音频就换下一个源，网络再慢也不会点着没反应
+            timer = setTimeout(function () { if (!gotSound()) giveUp(); }, 4000);
+
+            audio.src = srcs[idx];
+            // 关键：必须在用户手势的同步调用栈里 play()，否则 iOS / 微信会拦截自动播放
+            const p = audio.play();
+            if (p && p.catch) p.catch(function () { /* 成败由 canplay / error / 超时 判定 */ });
+        }
+
+        // 最后的兜底：系统语音合成。零网络依赖，但微信内置浏览器不一定支持，
+        // 所以只有前面两个音源都拿不到音频时才走这里；再失败就把喇叭标成 🔇。
+        function trySpeechSynthesis(text, seq) {
+            if (!('speechSynthesis' in window)) { setSpeakerState('fail'); return; }
+            const synth = window.speechSynthesis;
+            try { synth.cancel(); } catch (e) {}
+            clearInterval(_speechKeepAlive);
+            setTimeout(function () {
+                if (seq !== undefined && seq !== _ttsSeq) return;
+                try {
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'en-US';
+                    u.rate = 0.85;
+                    u.volume = 1.0;
+                    _currentUtterance = u;
+                    u.onend = function () {
+                        clearInterval(_speechKeepAlive);
+                        if (_ttsPlayingText === text) { _ttsPlayingText = null; _ttsRawEnc = null; setSpeakerState(null); }
+                    };
+                    u.onerror = function () {
+                        clearInterval(_speechKeepAlive);
+                        if (_ttsPlayingText === text) { _ttsPlayingText = null; setSpeakerState('fail'); }
+                    };
+                    _speechKeepAlive = setInterval(function () {
+                        if (synth.speaking) { try { synth.resume(); } catch (e) {} }
+                        else clearInterval(_speechKeepAlive);
+                    }, 250);
+                    synth.speak(u);
+                } catch (e) {
+                    setSpeakerState('fail');
+                }
+            }, 60);
         }
 
         function speakWord(text) {
-            if (!text) return;
-            text = cleanTTSText(text);
             speakNow(text);
         }
 
