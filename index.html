@@ -12,12 +12,18 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', 'Comic Sans MS', '幼圆', sans-serif;
-            background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+            background: #a18cd1;   /* 兜底色，真正的渐变放在固定的伪元素上 */
             min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 15px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* 渐变背景放在固定层：滚动时不必反复重绘整页渐变（手机上最费的一块） */
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: -1;
+            background: linear-gradient(135deg, #a18cd1, #fbc2eb);
         }
         .game-container {
-            width: 100%; max-width: 720px; background: rgba(255,255,255,0.94);
-            backdrop-filter: blur(12px); border-radius: 40px; padding: 20px;
+            width: 100%; max-width: 720px; background: #ffffff;
+            border-radius: 40px; padding: 20px;
             box-shadow: 0 25px 50px rgba(0,0,0,0.35); text-align: center;
         }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: white; font-weight: bold; font-size: 1.05rem; background: rgba(0,0,0,0.25); border-radius: 50px; padding: 8px 20px; }
@@ -26,7 +32,7 @@
         .stars { color: #f1c40f; font-size: 1.3rem; }
         .progress-bar { width: 100%; height: 12px; background: #ddd; border-radius: 10px; margin: 10px 0; overflow: hidden; }
         .progress-fill { height: 100%; width: 0%; background: #2ecc71; border-radius: 10px; transition: width 0.4s; }
-        .timer { font-size: 1.8rem; font-weight: bold; color: #e74c3c; margin: 10px 0; }
+        .timer { font-size: 1rem; font-weight: bold; color: #7f8c8d; margin: 8px 0; letter-spacing: 1px; }
         .dino { font-size: 4rem; }
         .question-area { background: #fef9e7; border-radius: 25px; padding: 20px; margin: 10px 0; min-height: 140px; display: flex; flex-direction: column; justify-content: center; }
         .question-text { font-size: 1.45rem; font-weight: bold; color: #2c3e50; margin-bottom: 8px; line-height: 1.5; }
@@ -167,11 +173,12 @@
             70% { opacity: 1; transform: translate(-50%,-56%) scale(1); }
             100% { opacity: 0; transform: translate(-50%,-72%) scale(.96); }
         }
-        .fs-screen { position: absolute; inset: 0; display: none; place-items: center; padding: 16px;
-            background: rgba(60,30,80,.42); backdrop-filter: blur(6px); overflow: auto; z-index: 3; }
-        .fs-screen.fs-show { display: grid; }
-        .fs-panel { width: min(660px, 96vw); background: rgba(255,255,255,.97); border-radius: 34px;
-            padding: 24px 24px 20px; box-shadow: 0 25px 50px rgba(0,0,0,.35); text-align: center; }
+        .fs-screen { position: absolute; inset: 0; display: none; padding: 16px;
+            background: rgba(52,24,72,.58); overflow: auto; z-index: 3; }
+        .fs-screen.fs-show { display: flex; }
+        .fs-panel { margin: auto; width: 100%; max-width: 660px; background: rgba(255,255,255,.97);
+            border-radius: 34px; padding: 24px 20px 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,.35); text-align: center; }
         .fs-panel h1 { font-size: clamp(24px, 5vw, 38px); color: #8e44ad; line-height: 1.25; }
         .fs-panel h1 span { color: #e67e22; }
         .fs-sub { color: #5d6d7e; font-size: 14px; margin-top: 8px; line-height: 1.7; }
@@ -203,11 +210,65 @@
         .fs-rw b { color: #2c3e50; }
         .fs-rw .fs-cn { color: #e67e22; margin-left: 6px; }
         .fs-rw i { font-style: normal; color: #95a5a6; font-size: 12px; margin-left: auto; }
-        #fsReview { max-height: 32vh; overflow: auto; margin-top: 10px; display: flex;
+        #fsReview, #fsLvReview { max-height: 32vh; overflow: auto; margin-top: 10px; display: flex;
             flex-direction: column; gap: 6px; }
         .fs-hint { font-size: 12px; color: #7f8c8d; margin-top: 10px; line-height: 1.7; text-align: left; }
         .fs-kbd { background: #ede4f7; border-radius: 5px; padding: 1px 6px; font-family: monospace; }
         body.fs-lock { overflow: hidden; }
+        /* ===== 闯关模式 ===== */
+        .fs-prog { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+        .fs-prog .fs-pbox { background: #f4f0f8; border-radius: 14px; padding: 7px 14px; font-size: 12px; color: #7f8c8d; }
+        .fs-prog .fs-pbox b { color: #8e44ad; font-size: 16px; font-variant-numeric: tabular-nums; }
+        .fs-cta.fs-adventure { background: #16a085; box-shadow: 0 5px 0 #0e6655; margin-top: 14px; font-size: 20px; }
+        .fs-divider { display: flex; align-items: center; gap: 10px; color: #b3a3c4; font-size: 12px;
+            margin: 20px 0 6px; letter-spacing: 1px; }
+        .fs-divider::before, .fs-divider::after { content: ''; flex: 1; height: 1px; background: #e3d9ee; }
+        .fs-chip.lv { background: #fff4e6; border-color: rgba(230,126,34,.5); }
+        .fs-chip.lv b { color: #e67e22; }
+
+        #fsMapBody { max-height: 60vh; overflow: auto; margin-top: 12px; text-align: left; }
+        .fs-island { background: #faf7fd; border: 2px solid #e3d9ee; border-radius: 20px;
+            padding: 12px 14px; margin-bottom: 12px; }
+        .fs-island > h2 { font-size: 15px; color: #8e44ad; font-weight: bold; }
+        .fs-island > h2 small { display: block; color: #95a5a6; font-weight: normal; font-size: 12px;
+            margin-top: 2px; }
+        .fs-lvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+            gap: 8px; margin-top: 10px; }
+        .fs-lvbtn { border: 3px solid #d7c9e6; background: #fff; border-radius: 16px;
+            padding: 8px 4px 6px; cursor: pointer; font-family: inherit; color: #2c3e50;
+            transition: .12s; line-height: 1.3; }
+        .fs-lvbtn b { display: block; font-size: 15px; }
+        .fs-lvbtn i { display: block; font-style: normal; font-size: 11px; color: #b0a0c0; }
+        .fs-lvbtn .fs-lvstars { display: block; font-size: 11px; letter-spacing: -1px;
+            margin-top: 2px; height: 14px; color: #e67e22; }
+        .fs-lvbtn.fs-cur { border-color: #e67e22; background: #fff8ef; box-shadow: 0 3px 0 #f0c9a0; }
+        .fs-lvbtn.fs-done { border-color: #a9dfbf; background: #f2fbf5; }
+        .fs-lvbtn.fs-lock { opacity: .48; cursor: not-allowed; background: #f2f2f2; border-style: dashed; }
+        .fs-lvbtn:active:not(.fs-lock) { transform: translateY(2px); }
+
+        .fs-learn-top { display: flex; align-items: center; gap: 10px; justify-content: center;
+            flex-wrap: wrap; margin-top: 10px; }
+        .fs-dots { display: flex; gap: 5px; align-items: center; }
+        .fs-dot { width: 9px; height: 9px; border-radius: 50%; background: #ddd0ea; }
+        .fs-dot.on { background: #8e44ad; transform: scale(1.25); }
+        #fsLearnGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+            gap: 8px; max-height: 48vh; overflow: auto; margin-top: 12px; }
+        .fs-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+            border: 2px solid #d7c9e6; background: #fff; border-radius: 16px; padding: 9px 11px;
+            cursor: pointer; font-family: inherit; text-align: left; transition: .12s; }
+        .fs-card b { font-size: 17px; color: #2c3e50; word-break: break-word; }
+        .fs-card span { font-size: 13px; color: #e67e22; }
+        .fs-card em { font-style: normal; font-size: 11px; color: #b0a0c0; }
+        .fs-card:active { transform: scale(.97); }
+        .fs-card.fs-mute span { color: transparent; background: #ececf1; border-radius: 6px; }
+        .fs-row { display: flex; gap: 9px; }
+        .fs-row .fs-cta { flex: 1; }
+        .fs-stars-big { font-size: clamp(34px, 9vw, 56px); letter-spacing: 6px; margin-top: 4px; }
+        .fs-stars-big .off { opacity: .2; }
+        .fs-seg-mini { border: 2px solid #d7c9e6; background: #f4f0f8; border-radius: 999px;
+            padding: 5px 13px; font-size: 12px; font-family: inherit; cursor: pointer;
+            color: #6c3483; font-weight: bold; }
+        .fs-seg-mini.fs-on { background: #8e44ad; border-color: #6c3483; color: #fff; }
         @media (max-width: 520px) {
             .fs-chip { font-size: 11px; padding: 4px 9px; }
             .fs-chip b { font-size: 13px; }
@@ -217,6 +278,28 @@
         /* 喇叭按钮的发音状态 */
         .spk.spk-on { background: #16a085; box-shadow: 0 3px 0 #0e6655; }
         .spk.spk-fail { background: #bdc3c7; box-shadow: 0 3px 0 #95a5a6; }
+
+        /* 非游戏状态隐藏 canvas：画面本来就是静止的，省掉每帧全屏重绘 */
+        #fsCanvas.fs-idle { visibility: hidden; }
+
+        /* 窄屏收紧主按钮的间距，避免"看完了·下一页"这种文案被挤成两行 */
+        @media (max-width: 520px) {
+            .fs-cta { font-size: 17px; letter-spacing: 1px; padding: 14px; }
+            .fs-cta.fs-ghost { font-size: 14px; padding: 11px; letter-spacing: 0; }
+            .fs-cta.fs-adventure { font-size: 18px; letter-spacing: 2px; }
+        }
+
+        /* 触屏设备关掉 :hover —— 手机浏览器会把上一次触摸点"粘"在 hover 上，
+           导致刚进入题目时某个选项看起来已经高亮/被选中，误导孩子。
+           用 :not() 排除掉 active / correct 这类真正的状态类，避免把状态样式也压掉。 */
+        @media (hover: none), (pointer: coarse) {
+            .option-btn:not(.correct):not(.wrong):hover { transform: none; border-color: #bdc3c7; background: #f9f9f9; }
+            .world-card:hover { transform: none; background: #fff3cd; }
+            .week-pill:not(.active):hover { background: #eef2f7; }
+            .day-btn:not(.active-day):hover { border-color: #bdc3c7; background: #f9f9f9; }
+            .fs-tbtn:hover { background: rgba(255,255,255,.92); }
+            .fs-seg button:not(.fs-on):hover { background: #f4f0f8; }
+        }
     </style>
 </head>
 <body>
@@ -726,6 +809,9 @@
         function getSpeakAns() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY_SPEAK_ANS)) || {}; } catch(e) { return {}; } }
         function setSpeakAns(o) { try { localStorage.setItem(STORAGE_KEY_SPEAK_ANS, JSON.stringify(o)); } catch(e) {} }
         function speakDoneCount() { const d = getSpeakDone(); return Object.keys(d).filter(k => d[k]).length; }
+        /* 切水果闯关进度（外层首页显示用） */
+        function fsCleared() { try { return window.FruitSlicer.progress().cleared; } catch (e) { return 0; } }
+        function fsLevelTotal() { try { return window.FruitSlicer.levelCount(); } catch (e) { return 0; } }
         function weekDoneCount(wi) { const d = getSpeakDone(); let c = 0; for (let i = 0; i < 7; i++) { if (d[wi + '-' + i]) c++; } return c; }
         // 取当天扩充内容（第 4 句拓展句 / 词块 / 句型替换 / 追问 / 发音贴士）
         function dayEnrich(wi, di) { return SPEAK_ENRICH[wi + '-' + di] || null; }
@@ -852,7 +938,7 @@
 
         function renderStart() {
             const streak = getStreak();
-            container.innerHTML = `<div class="dino">🐉</div><h1>PET 全能冒险岛</h1><p style="font-size:1rem;">📚有效词汇 ${VALID_WORDS.length}+ | 📐语法1500 | 🗣️口语500</p><p style="color:#8e44ad;font-weight:bold;">B1 Preliminary · 剑桥PET备考</p><button class="btn start-btn" onclick="game.startDaily()">📅 每日打卡</button><button class="btn start-btn" style="background:#8e44ad;box-shadow:0 5px 0 #6c3483;" onclick="game.startGame()">自由闯关 🚀</button><button class="btn start-btn" style="background:#16a085;box-shadow:0 5px 0 #0e6655;" onclick="FruitSlicer.open()">🍉 切水果背单词</button><br><button class="btn village-btn" onclick="game.openSpeakVillage()">🏘️ 口语村打卡</button><p style="margin-top:15px;">🔥 连续打卡 ${streak} 天 · 🏘️ 口语村已打卡 ${speakDoneCount()}/${SPEAK_TOTAL_DAYS} 天</p>`;
+            container.innerHTML = `<div class="dino">🐉</div><h1>PET 全能冒险岛</h1><p style="font-size:1rem;">📚有效词汇 ${VALID_WORDS.length}+ | 📐语法1500 | 🗣️口语500</p><p style="color:#8e44ad;font-weight:bold;">B1 Preliminary · 剑桥PET备考</p><button class="btn start-btn" onclick="game.startDaily()">📅 每日打卡</button><button class="btn start-btn" style="background:#8e44ad;box-shadow:0 5px 0 #6c3483;" onclick="game.startGame()">自由闯关 🚀</button><button class="btn start-btn" style="background:#16a085;box-shadow:0 5px 0 #0e6655;" onclick="FruitSlicer.open()">🍉 切水果闯关背单词</button><br><button class="btn village-btn" onclick="game.openSpeakVillage()">🏘️ 口语村打卡</button><p style="margin-top:15px;">🔥 连续打卡 ${streak} 天 · 🏘️ 口语村已打卡 ${speakDoneCount()}/${SPEAK_TOTAL_DAYS} 天</p><p style="margin-top:4px;color:#16a085;font-weight:bold;">🍉 切水果已过 ${fsCleared()}/${fsLevelTotal()} 关</p>`;
         }
         function renderDaily() {
             const target = getDailyTarget();
@@ -879,7 +965,7 @@
             else if (q.type === 'grammar') html = `<div class="question-text">${q.question || '（题目缺失）'}</div>`;
             else html = `<div class="question-text">${q.scenario}</div><button class="btn" id="btnReadScenario" style="font-size:1rem;padding:8px 20px;">🔊 听发音</button>`;
             const opts = q.options.map((opt,i)=>`<button class="option-btn" data-action="answer" data-idx="${i}">${opt}</button>`).join('');
-            container.innerHTML = `${state.dailyMode?`<div class="header"><span>📅 每日打卡</span><span class="score">⭐ ${state.stars}</span></div>`:`<div class="header"><span class="lives">${'❤️'.repeat(state.lives)}</span><span>${state.isReviewMode?'🔄错题重做':({vocab:'🌳词汇',grammar:'⛰️语法',speaking:'🏘️口语'})[state.currentWorld]}</span><span class="score">⭐ ${state.stars}</span></div>`}<div class="progress-bar"><div class="progress-fill" style="width:${progress}%;"></div></div><div class="timer">⏳ ${state.timeLeft}</div><div class="question-area">${html}</div><div class="options">${opts}</div><div class="${state.feedback&&state.feedback.includes('❌')?'feedback-msg explain':'feedback-msg'}">${state.feedback||''}</div>`;
+            container.innerHTML = `${state.dailyMode?`<div class="header"><span>📅 每日打卡</span><span class="score">⭐ ${state.stars}</span></div>`:`<div class="header"><span class="lives">${'❤️'.repeat(state.lives)}</span><span>${state.isReviewMode?'🔄错题重做':({vocab:'🌳词汇',grammar:'⛰️语法',speaking:'🏘️口语'})[state.currentWorld]}</span><span class="score">⭐ ${state.stars}</span></div>`}<div class="progress-bar"><div class="progress-fill" style="width:${progress}%;"></div></div><div class="timer">⏱ 不限时 · 想好了再选，答完点「下一题」</div><div class="question-area">${html}</div><div class="options">${opts}</div><div class="${state.feedback&&state.feedback.includes('❌')?'feedback-msg explain':'feedback-msg'}">${state.feedback||''}</div>`;
         }
         function renderReview() {
             const wq = state.wrongQuestions;
@@ -1222,7 +1308,14 @@
             else state.questions=generateSpeakingQuestions(QUESTIONS_PER_ROUND);
             state.screen='playing'; startTimer(); render();
         }
-        function startTimer() { clearInterval(state.timerInterval); state.timeLeft=QUESTION_TIME; state.timerInterval=setInterval(()=>{ state.timeLeft--; const el=document.querySelector('.timer'); if(el) el.textContent=`⏳ ${state.timeLeft}`; if(state.timeLeft<=0){ clearInterval(state.timerInterval); if(state.canAnswer) handleTimeout(); } },1000); }
+        // 已改为「自由时间」：不再倒计时、不再超时判错。孩子可以慢慢认、慢慢想，
+        // 认好了自己点「下一题」继续。handleTimeout 保留但不会再被触发。
+        function startTimer() {
+            clearInterval(state.timerInterval); state.timerInterval = null;
+            state.timeLeft = QUESTION_TIME;
+            const el = document.querySelector('.timer');
+            if (el) el.textContent = '⏱ 不限时 · 想好了再选，答完点「下一题」';
+        }
         function answer(idx) {
             if(!state.canAnswer) return;
             state.canAnswer=false; clearInterval(state.timerInterval);
@@ -1234,7 +1327,10 @@
                 state.feedback='✅ 正确！ +10分'; playSound('correct');
                 speakByType(q.type==='vocab'?q.english:q.options[q.correct], q.type);
                 if(q.type==='vocab'&&state.dailyMode) recordVocabAnswer(q.english,true);
-                setTimeout(()=>{ if(!state.dailyMode&&state.lives<=0){ gameOver(); return; } nextQuestion(); },1500);
+                // 答对后不再自动跳走（原来 1.5 秒就翻页，来不及看），
+                // 顺便把「答对了」这句反馈真正显示出来（原实现只改了 state.feedback，没渲染）
+                const fbOk=document.querySelector('.feedback-msg');
+                if(fbOk) fbOk.innerHTML = '✅ 正确！ +10分<br><br><button class="btn" onclick="game.nextQuestion()">下一题 ▶</button>';
             } else {
                 if(state.isReviewMode) {
                     state.wrongQuestions.push({ question:{...q}, wrongAnswer:q.options[idx], wrongIdx:idx });
@@ -1328,6 +1424,7 @@
   <div id="fsHud">
     <div class="fs-top">
       <div class="fs-chips">
+        <div class="fs-chip lv" id="fsChipLv" style="display:none">第 <b id="fsLvNo">1</b> 关 <span id="fsLvProgress">1/15</span></div>
         <div class="fs-chip gold">分数 <b id="fsScore">0</b></div>
         <div class="fs-chip">连击 <b id="fsCombo">0</b></div>
         <div class="fs-chip ok">正确 <b id="fsRight">0</b></div>
@@ -1338,6 +1435,7 @@
       <div class="fs-tools">
         <button class="fs-tbtn" id="fsBtnSound" title="音效开关">🔊</button>
         <button class="fs-tbtn" id="fsBtnSpeak" title="单词发音开关">🗣️</button>
+        <button class="fs-tbtn" id="fsBtnToMap" title="返回闯关地图">🗺️</button>
         <button class="fs-tbtn" id="fsBtnPause" title="暂停（空格）">⏸</button>
         <button class="fs-tbtn" id="fsBtnClose" title="退出切水果">✖</button>
       </div>
@@ -1355,6 +1453,9 @@
   <div class="fs-screen fs-show" id="fsStartScreen">
     <div class="fs-panel">
       <h1>🍉 PET 切水果<span>背单词</span></h1>
+      <div class="fs-prog" id="fsStartProg"></div>
+      <button class="fs-cta fs-adventure" id="fsBtnAdventure">🗺️ 闯 关 模 式</button>
+      <div class="fs-divider">或者自己随便练练</div>
       <div class="fs-sub">
         看题目 → 划开写着正确答案的水果。切错或让正确答案掉下去都会掉一颗心，三颗心用完结束。<br>
         词库直接取自「PET 全能冒险岛」的完整词汇库：<b id="fsBankInfo">加载中…</b>
@@ -1389,7 +1490,7 @@
         <div class="fs-box"><b id="fsMastered">0</b><span>已答对词数</span></div>
         <div class="fs-box"><b id="fsPool">0</b><span>本局可用词</span></div>
       </div>
-      <button class="fs-cta" id="fsBtnStart">开 始 游 戏</button>
+      <button class="fs-cta" id="fsBtnStart">🎠 开 始 自 由 练 习</button>
       <button class="fs-cta fs-ghost" id="fsBtnBack">← 返回冒险岛</button>
       <div class="fs-hint">
         操作：按住鼠标左键拖动切开水果，或直接点击水果。手机上用手指划。<br>
@@ -1425,6 +1526,52 @@
       <button class="fs-cta fs-ghost" id="fsBtnHome">返回切水果首页</button>
     </div>
   </div>
+
+  <div class="fs-screen" id="fsMapScreen">
+    <div class="fs-panel">
+      <h1>🗺️ 闯 关 地 图</h1>
+      <div class="fs-sub" id="fsMapSub"></div>
+      <div id="fsMapBody"></div>
+      <button class="fs-cta fs-ghost" id="fsBtnMapBack">← 返回切水果首页</button>
+    </div>
+  </div>
+
+  <div class="fs-screen" id="fsLearnScreen">
+    <div class="fs-panel">
+      <h1 id="fsLearnTitle">词 汇 快 速 记 忆</h1>
+      <div class="fs-sub" id="fsLearnSub"></div>
+      <div class="fs-learn-top">
+        <div class="fs-dots" id="fsLearnDots"></div>
+        <button class="fs-seg-mini" id="fsBtnLearnMute">遮住中文自测</button>
+      </div>
+      <div id="fsLearnGrid"></div>
+      <div class="fs-row">
+        <button class="fs-cta fs-ghost" id="fsBtnLearnPrev">← 上一页</button>
+        <button class="fs-cta" id="fsBtnLearnNext">看 完 了 · 下 一 页</button>
+      </div>
+      <button class="fs-cta fs-ghost" id="fsBtnLearnSkip">跳过记忆，直接开始切水果</button>
+    </div>
+  </div>
+
+  <div class="fs-screen" id="fsLevelOverScreen">
+    <div class="fs-panel">
+      <h1 id="fsLvTitle">过 关 啦</h1>
+      <div class="fs-stars-big" id="fsLvStars"></div>
+      <div class="fs-sub" id="fsLvSub"></div>
+      <div class="fs-meta">
+        <div class="fs-box"><b id="fsLvRight">0</b><span>切对</span></div>
+        <div class="fs-box"><b id="fsLvWrong">0</b><span>失误</span></div>
+        <div class="fs-box"><b id="fsLvAcc">0%</b><span>正确率</span></div>
+        <div class="fs-box"><b id="fsLvScore">0</b><span>本关得分</span></div>
+      </div>
+      <div class="fs-grp" id="fsLvReviewWrap"><label>本关错词 · 再认一遍</label></div>
+      <div id="fsLvReview"></div>
+      <button class="fs-cta" id="fsBtnLvNext">进 入 下 一 关</button>
+      <button class="fs-cta fs-ghost" id="fsBtnLvRetry">再 玩 一 次 本 关</button>
+      <button class="fs-cta fs-ghost" id="fsBtnLvWords">翻看 本关 50 词</button>
+      <button class="fs-cta fs-ghost" id="fsBtnLvMap">返回闯关地图</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1437,7 +1584,20 @@
   'use strict';
 
   var FONT = "'Segoe UI','Comic Sans MS','幼圆',sans-serif";
-  var LS = { best: 'fs_best', mastered: 'fs_mastered', settings: 'fs_settings' };
+  var LS = { best: 'fs_best', mastered: 'fs_mastered', settings: 'fs_settings', progress: 'fs_progress' };
+
+  /* ---------- 闯关配置 ---------- */
+  var LEVEL_SIZE = 50;        // 每关词池大小
+  var LEVEL_QUESTIONS = 15;   // 每关固定题数
+  var LEVEL_SPLIT = 8;        // 前 N 题「看英文认中文」，之后「看中文想英文」
+  var REVIEW_WORDS = 5;       // 每关混入几个旧词做间隔复习
+  var LEARN_PER_PAGE = 10;    // 记忆页每页词卡数
+
+  var ISLANDS = [
+    { key: 'nouns', name: '名词岛', icon: '🗻', tip: '看得见摸得着' },
+    { key: 'verbs', name: '动词岛', icon: '🌋', tip: '动作和状态' },
+    { key: 'adjectives', name: '形容词岛', icon: '🏔️', tip: '形容样子' }
+  ];
 
   /* ---------- 小工具 ---------- */
   var rnd = function (a, b) { return a + Math.random() * (b - a); };
@@ -1490,18 +1650,44 @@
       'fsOverTitle', 'fsOverSub', 'fsOScore', 'fsORight', 'fsOWrong', 'fsOAcc', 'fsOCombo', 'fsOBest',
       'fsBtnSound', 'fsBtnSpeak', 'fsBtnPause', 'fsBtnClose', 'fsBtnStart', 'fsBtnBack',
       'fsBtnResume', 'fsBtnQuit', 'fsBtnAgain', 'fsBtnHome',
-      'fsSegMode', 'fsSegPos', 'fsSegDiff'].forEach(function (id) { el[id] = $(id); });
+      'fsSegMode', 'fsSegPos', 'fsSegDiff',
+      /* 闯关模式 */
+      'fsChipLv', 'fsLvNo', 'fsLvProgress', 'fsStartProg', 'fsBtnAdventure', 'fsBtnToMap',
+      'fsMapScreen', 'fsMapSub', 'fsMapBody', 'fsBtnMapBack',
+      'fsLearnScreen', 'fsLearnTitle', 'fsLearnSub', 'fsLearnDots', 'fsLearnGrid',
+      'fsBtnLearnPrev', 'fsBtnLearnNext', 'fsBtnLearnSkip', 'fsBtnLearnMute',
+      'fsLevelOverScreen', 'fsLvTitle', 'fsLvStars', 'fsLvSub', 'fsLvRight', 'fsLvWrong',
+      'fsLvAcc', 'fsLvScore', 'fsLvReviewWrap', 'fsLvReview',
+      'fsBtnLvNext', 'fsBtnLvRetry', 'fsBtnLvWords', 'fsBtnLvMap'].forEach(function (id) { el[id] = $(id); });
     return true;
   }
 
+  /* 手机上 DPR 常为 3，按 3 渲染等于画 2.25 倍像素面积；按 1.5 渲染肉眼几乎看不出差别，
+     但每秒要填的像素少一大半 —— 这是掉帧最粗的一根杠杆。 */
+  var MAX_DPR = 1.5;
+  var SPR = {}, SPRN = 0;      // 水果/碎片的离屏位图缓存
+  var needPaint = true;        // 暂停等"定格"状态下，是否还需要补画一帧
+
+  function sprClear() { SPR = {}; SPRN = 0; }
+
   function resize() {
     if (!cv) return;
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    var d = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    if (d !== DPR) { sprClear(); rebindSprites(); }
+    DPR = d;
     W = root.clientWidth || window.innerWidth;
     H = root.clientHeight || window.innerHeight;
-    cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+    var pw = Math.floor(W * DPR), ph = Math.floor(H * DPR);
+    // 尺寸没变就别重建 canvas 位图（微信里地址栏伸缩会反复触发 resize）
+    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    needPaint = true;
+  }
+
+  function rebindSprites() {
+    G.fruits.forEach(function (f) { if (!f.sliced && !f.dead) f.sprite = null; });
+    G.halves.forEach(function (h) { h.sprite = null; });
   }
 
   /* ---------- 音效 ---------- */
@@ -1557,8 +1743,59 @@
     shake: 0, roundTimer: 0, nextRoundIn: 0,
     pool: [], bank: [], masteredSet: new Set(),
     wrongLog: [], slicing: false, lastPt: null,
-    pendingOver: false, prevState: null
+    pendingOver: false, prevState: null,
+    /* --- 闯关模式 --- */
+    mode: 'free', level: null, pendingLevel: null,
+    levelWords: [], reviewWords: [], askedSet: {},
+    qIndex: 0, qTotal: LEVEL_QUESTIONS, qRight: 0, qWrong: 0,
+    retryUsed: false, reissue: false, learn: null, earlyEnd: false
   };
+
+  /* ---------- 闯关：关卡表与进度 ---------- */
+  var LEVELS = null;
+
+  function buildLevels() {
+    if (LEVELS) return LEVELS;
+    var bank = G.bank.length ? G.bank : (window.FruitSlicerBank || []);
+    LEVELS = [];
+    ISLANDS.forEach(function (isl) {
+      var words = bank.filter(function (x) { return x.pos === isl.key; });
+      // 岛内先短词后长词，同长度按字母序 —— 让孩子从最好认的词起手
+      words.sort(function (a, b) {
+        if (a.w.length !== b.w.length) return a.w.length - b.w.length;
+        return a.w < b.w ? -1 : (a.w > b.w ? 1 : 0);
+      });
+      for (var i = 0; i < words.length; i += LEVEL_SIZE) {
+        var chunk = words.slice(i, i + LEVEL_SIZE);
+        if (!chunk.length) break;
+        LEVELS.push({
+          no: LEVELS.length + 1,
+          island: isl.key, islandName: isl.name, islandIcon: isl.icon,
+          inIsland: Math.floor(i / LEVEL_SIZE) + 1,
+          words: chunk
+        });
+      }
+    });
+    return LEVELS;
+  }
+  function totalLevels() { return buildLevels().length; }
+
+  function getProgress() {
+    var p = lsGet(LS.progress, null);
+    if (!p || typeof p !== 'object') p = {};
+    if (!p.stars || typeof p.stars !== 'object') p.stars = {};
+    if (typeof p.cleared !== 'number') p.cleared = 0;
+    if (!Array.isArray(p.wrongWords)) p.wrongWords = [];
+    return p;
+  }
+  function saveProgress(p) { lsSet(LS.progress, p); }
+  function starsOf(no) { return getProgress().stars[no] || 0; }
+  function isUnlocked(no) { return no <= getProgress().cleared + 1; }
+  function totalStars() {
+    var p = getProgress(), n = 0;
+    for (var k in p.stars) n += (p.stars[k] || 0);
+    return n;
+  }
 
   /* ---------- 词库 ---------- */
   function activePool() {
@@ -1592,6 +1829,22 @@
     el.fsBest.textContent = lsGet(LS.best, 0);
     el.fsMastered.textContent = G.masteredSet.size;
     el.fsPool.textContent = activePool().length;
+    if (el.fsChipLv) {
+      var lvMode = G.mode === 'level' && !!G.level;
+      el.fsChipLv.style.display = lvMode ? '' : 'none';
+      if (lvMode) {
+        el.fsLvNo.textContent = G.level.no;
+        el.fsLvProgress.textContent = Math.min(G.qIndex, G.qTotal) + '/' + G.qTotal;
+      }
+    }
+  }
+  function renderStartProg() {
+    if (!el.fsStartProg) return;
+    var p = getProgress();
+    el.fsStartProg.innerHTML =
+      '<div class="fs-pbox">🗺️ 已通关 <b>' + p.cleared + '/' + totalLevels() + '</b> 关</div>' +
+      '<div class="fs-pbox">⭐ <b>' + totalStars() + '</b></div>' +
+      '<div class="fs-pbox">📚 已掌握 <b>' + G.masteredSet.size + '</b> 词</div>';
   }
   function toast(text, kind) {
     var t = el.fsToast; if (!t) return;
@@ -1606,38 +1859,118 @@
     el.fsPrompt.className = 'fs-prompt' + (cls ? ' ' + cls : '');
   }
 
-  /* ---------- 开局 ---------- */
+  /* ---------- 开局（自由练习） ---------- */
   function startGame() {
+    G.mode = 'free'; G.level = null;
+    G.score = 0; G.combo = 0; G.maxCombo = 0; G.life = 3;
+    G.right = 0; G.wrong = 0; G.round = 0;
+    G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
+    G.shake = 0; G.wrongLog = []; G.pendingOver = false; G.earlyEnd = false;
+    G.retryUsed = false; G.reissue = false;
+    G.bank = G.bank.length ? G.bank : (window.FruitSlicerBank || []);
+    G.pool = activePool();
+    hide(el.fsStartScreen); hide(el.fsOverScreen); hide(el.fsPauseScreen);
+    hide(el.fsMapScreen); hide(el.fsLearnScreen); hide(el.fsLevelOverScreen);
+    updateHUD();
+    nextRound();
+  }
+
+  /* ---------- 开局（闯关） ---------- */
+  function startLevelGame() {
+    var lv = G.pendingLevel;
+    if (!lv) { openMap(); return; }
+    G.mode = 'level';
+    G.level = lv;
+    G.levelWords = lv.words.slice();
+    G.reviewWords.forEach(function (w) {
+      var dup = false;
+      for (var i = 0; i < G.levelWords.length; i++) if (G.levelWords[i].w === w.w) dup = true;
+      if (!dup) G.levelWords.push(w);
+    });
+    G.pool = G.levelWords;
+    G.askedSet = {};
+    G.qIndex = 0; G.qTotal = LEVEL_QUESTIONS; G.qRight = 0; G.qWrong = 0;
+    G.retryUsed = false; G.reissue = false; G.earlyEnd = false;
     G.score = 0; G.combo = 0; G.maxCombo = 0; G.life = 3;
     G.right = 0; G.wrong = 0; G.round = 0;
     G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
     G.shake = 0; G.wrongLog = []; G.pendingOver = false;
-    G.bank = G.bank.length ? G.bank : (window.FruitSlicerBank || []);
-    G.pool = activePool();
+    hide(el.fsLearnScreen); hide(el.fsMapScreen); hide(el.fsLevelOverScreen);
     hide(el.fsStartScreen); hide(el.fsOverScreen); hide(el.fsPauseScreen);
     updateHUD();
     nextRound();
   }
 
+  function pickLevelTarget() {
+    var pool = G.levelWords.length ? G.levelWords : G.bank;
+    // 先复现本关还没补过的错词
+    for (var i = 0; i < G.wrongLog.length; i++) {
+      var w = G.wrongLog[i];
+      if (w.redone) continue;
+      for (var j = 0; j < pool.length; j++) {
+        if (pool[j].w === w.w) { w.redone = true; return pool[j]; }
+      }
+    }
+    // 再抽没出过的词
+    var fresh = [];
+    for (var k = 0; k < pool.length; k++) if (!G.askedSet[pool[k].w]) fresh.push(pool[k]);
+    if (!fresh.length) fresh = pool;
+    var t = pick(fresh);
+    G.askedSet[t.w] = 1;
+    return t;
+  }
+
   function nextRound() {
+    var reissue = G.reissue;
+    G.reissue = false;
+
+    if (G.mode === 'level' && G.level) {
+      if (!reissue) {
+        if (G.qIndex >= G.qTotal) { finishLevel(); return; }
+        G.qIndex++;
+        G.target = pickLevelTarget();
+        G.retryUsed = false;
+      }
+      // 重发同一题时保留 retryUsed=true —— 第二次再错就要扣命了
+      spawnRound(G.target, G.qIndex <= LEVEL_SPLIT ? 'en2cn' : 'cn2en');
+      return;
+    }
+
+    G.retryUsed = false;
     G.round++;
     var pool = G.pool.length >= 10 ? G.pool : G.bank;
     var target = pick(pool);
     G.target = target;
-    G.dir = settings.mode === 'mix' ? (Math.random() < 0.5 ? 'cn2en' : 'en2cn') : settings.mode;
+    spawnRound(target, settings.mode === 'mix' ? (Math.random() < 0.5 ? 'cn2en' : 'en2cn') : settings.mode);
+  }
+
+  function spawnRound(target, dir) {
+    if (!target) { finishLevel(); return; }
+    sprClear();          // 上一题的水果位图不会再用了，腾掉
+    G.round++;
+    G.dir = dir;
     var labelOf = function (w) { return G.dir === 'cn2en' ? w.w : w.cn; };
     var targetLabel = labelOf(target);
 
     var d = DIFF[settings.diff] || DIFF.easy;
-    var want = clamp(Math.round(d.base + (G.round - 1) * d.ramp), d.base, d.max);
+    var want;
+    if (G.mode === 'level' && G.level) {
+      // 关内难度爬坡：第 1 题 2 个水果，最后一题 4 个
+      var prog = G.qTotal ? (G.qIndex - 1) / G.qTotal : 0;
+      want = clamp(Math.round(2 + prog * 2), 2, 4);
+    } else {
+      want = clamp(Math.round(d.base + (G.round - 1) * d.ramp), d.base, d.max);
+    }
 
     // 选干扰项：标签不重复、释义不与目标相同
     // （词库里“选择/choose/select/option”这类同义中文很多，必须排除）
+    var srcPool = (G.mode === 'level' && G.level && G.levelWords.length) ? G.levelWords
+      : (G.pool.length >= 10 ? G.pool : G.bank);
     var used = {};
     used[targetLabel.toLowerCase()] = 1;
     var chosen = [target];
     var rMax = fruitRadius(targetLabel);
-    var shuffled = shuffle(pool);
+    var shuffled = shuffle(srcPool);
     for (var i = 0; i < shuffled.length && chosen.length < want; i++) {
       var w = shuffled[i];
       if (w.w === target.w) continue;
@@ -1682,17 +2015,23 @@
       };
     });
 
+    var sub;
+    if (G.mode === 'level' && G.level) {
+      sub = '第 ' + G.level.no + ' 关 · 第 ' + G.qIndex + '/' + G.qTotal + ' 题' +
+        (G.retryUsed ? ' · 再试一次' : '') + ' · ' + esc(target.posCn || '');
+    } else {
+      sub = '第 ' + G.round + ' 题 · ' + esc(target.posCn || '') + ' · 词库 ' + G.bank.length + ' 词';
+    }
     if (G.dir === 'cn2en') {
-      setPrompt('切 出 对 应 的 英 文 单 词', esc(target.cn),
-        '第 ' + G.round + ' 题 · ' + esc(target.posCn || '') + ' · 词库 ' + G.bank.length + ' 词');
+      setPrompt('切 出 对 应 的 英 文 单 词', esc(target.cn), sub);
     } else {
       setPrompt('切 出 对 应 的 中 文 意 思',
-        esc(target.w) + ' <button class="fs-spk" id="fsSpeakBtn">🔊 读</button>',
-        '第 ' + G.round + ' 题 · ' + esc(target.posCn || '') + ' · 词库 ' + G.bank.length + ' 词');
+        esc(target.w) + ' <button class="fs-spk" id="fsSpeakBtn">🔊 读</button>', sub);
       var sb = $('fsSpeakBtn');
       if (sb) sb.onclick = function () { speak(target.w); };
       speak(target.w);
     }
+    updateHUD();
     G.state = 'playing';
   }
 
@@ -1701,12 +2040,14 @@
     if (G.state !== 'playing') return;
     G.state = 'roundEnd';
     G.roundTimer = 0;
+    var isLevel = G.mode === 'level' && !!G.level;
 
     if (result === 'right') {
       G.combo++;
       G.maxCombo = Math.max(G.maxCombo, G.combo);
       var gain = 100 + (G.combo - 1) * 25 + G.round * 5;
       G.score += gain; G.right++;
+      if (isLevel) G.qRight++;
       G.masteredSet.add(G.target.w);
       lsSet(LS.mastered, Array.from(G.masteredSet));
       SFX.right(G.combo);
@@ -1716,13 +2057,27 @@
       if (fruit) burst(fruit.x, fruit.y, fruit.col, 26);
       if (G.dir === 'en2cn') speak(G.target.w);
       G.nextRoundIn = 0.8;
+    } else if (isLevel && result === 'wrong' && !G.retryUsed) {
+      // 闯关模式第一次切错：不扣命，同一题重新发一次，让孩子自己纠正
+      G.retryUsed = true;
+      G.reissue = true;
+      G.combo = 0;
+      SFX.miss();
+      if (fruit) burst(fruit.x, fruit.y, ['#bbb', '#888'], 10);
+      toast('再 试 一 次 ！', 'bad');
+      setPrompt('再 试 一 次', esc(G.dir === 'cn2en' ? G.target.cn : G.target.w),
+        '别急，看清楚再切一次', 'fs-bad');
+      G.nextRoundIn = 1.1;
     } else {
       G.combo = 0; G.wrong++;
+      if (isLevel) G.qWrong++;
       if (result === 'wrong') { SFX.wrong(); toast('切错了！', 'bad'); }
       else { SFX.miss(); toast('漏掉了…', 'bad'); }
-      G.life = Math.max(0, G.life - 1);
+      // 闯关模式：只有「真的切错」才扣命；手滑没切到只算错，不扣命
+      if (!isLevel || result === 'wrong') G.life = Math.max(0, G.life - 1);
       G.shake = 1;
-      G.wrongLog.push({ w: G.target.w, cn: G.target.cn, posCn: G.target.posCn, why: result === 'wrong' ? '切错' : '漏掉' });
+      G.wrongLog.push({ w: G.target.w, cn: G.target.cn, posCn: G.target.posCn,
+        why: result === 'wrong' ? '切错' : '漏掉', redone: false });
       setPrompt('正 确 答 案',
         esc(G.target.w) + ' <button class="fs-spk" id="fsSpeakBtn2">🔊</button>',
         esc(G.target.cn) + '　（' + (result === 'wrong' ? '切错了' : '没切到') + '）', 'fs-bad');
@@ -1733,10 +2088,11 @@
       G.nextRoundIn = 1.7;
     }
     updateHUD();
-    if (G.life <= 0) G.pendingOver = true;
+    if (G.life <= 0) { G.pendingOver = true; G.earlyEnd = true; }
   }
 
   function gameOver() {
+    if (G.mode === 'level' && G.level) { finishLevel(); return; }
     G.state = 'over';
     SFX.over();
     var best = Math.max(lsGet(LS.best, 0), G.score);
@@ -1775,6 +2131,224 @@
     }
     show(el.fsOverScreen);
     updateHUD();
+  }
+
+  /* ---------- 闯关：结算 ---------- */
+  function finishLevel() {
+    var lv = G.level;
+    if (!lv) { openMap(); return; }
+    G.state = 'levelover';
+    G.pendingOver = false;
+
+    var answered = G.qRight + G.qWrong;
+    var acc = answered ? G.qRight / answered : 0;
+    var stars = 0;
+    if (acc >= 0.9) stars = 3;
+    else if (acc >= 0.75) stars = 2;
+    else if (acc >= 0.6) stars = 1;
+    if (G.earlyEnd && stars > 1) stars = 1;   // 命用完提前结束，最多 1 颗星
+    G.lastStars = stars;
+
+    var p = getProgress();
+    var passed = stars >= 1;
+    if (passed && stars > (p.stars[lv.no] || 0)) p.stars[lv.no] = stars;
+    if (passed && p.cleared < lv.no) p.cleared = lv.no;
+    G.wrongLog.forEach(function (x) {
+      if (!x.redone && p.wrongWords.indexOf(x.w) < 0) p.wrongWords.push(x.w);
+    });
+    if (p.wrongWords.length > 400) p.wrongWords = p.wrongWords.slice(-400);
+    saveProgress(p);
+
+    if (stars >= 1) {
+      SFX.right(3);
+      if (stars === 3) {
+        tone(784, 0.18, 'triangle', 0.16);
+        setTimeout(function () { tone(988, 0.2, 'triangle', 0.16); }, 150);
+        setTimeout(function () { tone(1175, 0.3, 'triangle', 0.15); }, 300);
+      }
+    } else { SFX.over(); }
+
+    el.fsLvTitle.textContent = passed ? '过 关 啦 ！' : '差 一 点 点';
+    var st = '';
+    for (var i = 1; i <= 3; i++) st += '<span class="' + (i <= stars ? '' : 'off') + '">⭐</span>';
+    el.fsLvStars.innerHTML = st;
+    el.fsLvRight.textContent = G.qRight;
+    el.fsLvWrong.textContent = G.qWrong;
+    el.fsLvAcc.textContent = (answered ? Math.round(acc * 100) : 0) + '%';
+    el.fsLvScore.textContent = G.score;
+
+    var msg;
+    if (stars === 3) msg = '几乎全对！这 50 个词你已经很熟了 🏆';
+    else if (stars === 2) msg = '很好！错的几个再认一遍就稳了 💪';
+    else if (stars === 1) msg = '过关了！明天再来一次会更熟。';
+    else msg = '别急，先看看下面的错词，再看一遍就能过。';
+    if (G.earlyEnd && passed) msg += '（这次心用完了提前结束，下次切慢一点）';
+    el.fsLvSub.textContent = msg + '　已答 ' + answered + '/' + G.qTotal + ' 题。';
+
+    el.fsLvReview.innerHTML = '';
+    var seen = {}, uniq = [];
+    G.wrongLog.forEach(function (x) { if (!seen[x.w]) { seen[x.w] = 1; uniq.push(x); } });
+    if (!uniq.length) {
+      el.fsLvReviewWrap.style.display = 'none';
+    } else {
+      el.fsLvReviewWrap.style.display = 'block';
+      uniq.forEach(function (x) {
+        var d = document.createElement('div');
+        d.className = 'fs-rw';
+        d.style.cursor = 'pointer';
+        d.innerHTML = '<b>' + esc(x.w) + '</b><span class="fs-cn">' + esc(x.cn) + '</span><i>' +
+          esc(x.posCn || '') + ' · ' + esc(x.why) + ' · 点一下听</i>';
+        d.onclick = function () { speak(x.w); };
+        el.fsLvReview.appendChild(d);
+      });
+    }
+
+    var nextNo = lv.no + 1;
+    var hasNext = passed && nextNo <= totalLevels();
+    el.fsBtnLvNext.style.display = hasNext ? '' : 'none';
+    if (hasNext) el.fsBtnLvNext.textContent = '进 入 第 ' + nextNo + ' 关';
+
+    hide(el.fsLearnScreen); hide(el.fsMapScreen); hide(el.fsStartScreen);
+    hide(el.fsOverScreen); hide(el.fsPauseScreen);
+    show(el.fsLevelOverScreen);
+    updateHUD();
+  }
+
+  /* ---------- 闯关：词汇记忆预热 ---------- */
+  var LEARN_ONLY = false;   // 从结算页「翻看本关词」进来时只复习、不切水果
+
+  function openLearn(lv, reviewOnly) {
+    LEARN_ONLY = !!reviewOnly;
+    G.state = 'learn';
+    G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
+    var words = lv.words.slice();
+    var revFrom = words.length;
+    if (!reviewOnly) words = words.concat(G.reviewWords);
+
+    G.learn = { lv: lv, page: 0, words: words, revFrom: revFrom, hideCn: false };
+    var pages = Math.ceil(words.length / LEARN_PER_PAGE);
+    el.fsLearnDots.innerHTML = '';
+    for (var i = 0; i < pages; i++) {
+      var s = document.createElement('span');
+      s.className = 'fs-dot';
+      el.fsLearnDots.appendChild(s);
+    }
+    el.fsLearnTitle.textContent = '第 ' + lv.no + ' 关 · ' + lv.islandName + ' · 词汇记忆';
+    el.fsBtnLearnSkip.style.display = reviewOnly ? 'none' : '';
+    el.fsBtnLearnMute.classList.remove('fs-on');
+    hide(el.fsMapScreen); hide(el.fsLevelOverScreen); hide(el.fsStartScreen);
+    show(el.fsLearnScreen);
+    renderLearnPage();
+  }
+
+  function renderLearnPage() {
+    var L = G.learn; if (!L) return;
+    var pages = Math.ceil(L.words.length / LEARN_PER_PAGE);
+    if (L.page > pages - 1) L.page = pages - 1;
+    if (L.page < 0) L.page = 0;
+    var slice = L.words.slice(L.page * LEARN_PER_PAGE, (L.page + 1) * LEARN_PER_PAGE);
+
+    var isRev = L.page * LEARN_PER_PAGE >= L.revFrom;
+    el.fsLearnSub.innerHTML = '<b>不限时</b>，记好了自己点下面的按钮开始 · 第 ' + (L.page + 1) +
+      ' / ' + pages + ' 页 · ' +
+      (isRev ? '这一页是<b>复习</b>，之前学过，试试还记不记得' : '点词卡就能听发音，边听边记') +
+      '　（本关词池 ' + L.lv.words.length + ' 词）';
+
+    var dots = el.fsLearnDots.querySelectorAll('.fs-dot');
+    for (var d = 0; d < dots.length; d++) dots[d].className = 'fs-dot' + (d === L.page ? ' on' : '');
+
+    el.fsLearnGrid.innerHTML = '';
+    slice.forEach(function (w, idx) {
+      var globalIdx = L.page * LEARN_PER_PAGE + idx;
+      var isReview = globalIdx >= L.revFrom;
+      var b = document.createElement('button');
+      b.className = 'fs-card' + (L.hideCn ? ' fs-mute' : '');
+      b.innerHTML = '<b>' + esc(w.w) + '</b><span>' + esc(w.cn) + '</span><em>' +
+        (isReview ? '🔁 复习' : esc(w.posCn || '')) + '</em>';
+      b.onclick = function () { speak(w.w); };
+      el.fsLearnGrid.appendChild(b);
+    });
+
+    el.fsBtnLearnPrev.style.visibility = L.page === 0 ? 'hidden' : '';
+    var last = L.page >= pages - 1;
+    if (LEARN_ONLY) el.fsBtnLearnNext.textContent = last ? '看完了 · 返回' : '下一页 →';
+    else el.fsBtnLearnNext.textContent = last ? '开始切水果 🍉' : '看完了 · 下一页 →';
+    if (el.fsBtnLearnMute) {
+      el.fsBtnLearnMute.textContent = L.hideCn ? '显示中文' : '遮住中文自测';
+    }
+  }
+
+  /* ---------- 闯关：关卡地图 ---------- */
+  function startLevel(no) {
+    var lv = buildLevels()[no - 1];
+    if (!lv) return;
+    if (!isUnlocked(no)) { toast('先把前面这一关过了 🔒'); return; }
+    // 跨关复习：从前面所有关里抽 5 个旧词
+    G.reviewWords = [];
+    var pool = [];
+    buildLevels().forEach(function (l) {
+      if (l.no < no) l.words.forEach(function (w) { pool.push(w); });
+    });
+    if (pool.length) {
+      var sh = shuffle(pool);
+      var n = Math.min(REVIEW_WORDS, sh.length);
+      for (var i = 0; i < n; i++) G.reviewWords.push(sh[i]);
+    }
+    G.pendingLevel = lv;
+    openLearn(lv, false);
+  }
+
+  function openMap() {
+    G.state = 'map';
+    G.mode = 'free'; G.level = null;
+    G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
+    hide(el.fsStartScreen); hide(el.fsLearnScreen); hide(el.fsLevelOverScreen);
+    hide(el.fsOverScreen); hide(el.fsPauseScreen);
+    show(el.fsMapScreen);
+    renderMap();
+    updateHUD();
+  }
+
+  function renderMap() {
+    var levels = buildLevels();
+    var p = getProgress();
+    el.fsMapSub.innerHTML = '已通关 <b>' + p.cleared + '/' + levels.length + '</b> 关　·　⭐ <b>' +
+      totalStars() + '</b>　·　📚 已掌握 <b>' + G.masteredSet.size + '</b> 词<br>' +
+      '每关先看一遍 50 个词，再切。切对率 90% / 75% / 60% 分别是三 / 二 / 一颗星，拿到 1 颗星就能进下一关。';
+
+    var body = el.fsMapBody;
+    body.innerHTML = '';
+    var curNo = p.cleared + 1;
+    ISLANDS.forEach(function (isl) {
+      var mine = levels.filter(function (l) { return l.island === isl.key; });
+      if (!mine.length) return;
+      var done = mine.filter(function (l) { return (p.stars[l.no] || 0) > 0; }).length;
+      var box = document.createElement('div');
+      box.className = 'fs-island';
+      box.innerHTML = '<h2>' + isl.icon + ' ' + isl.name +
+        '<small>' + isl.tip + ' · 已过 ' + done + '/' + mine.length + ' 关</small></h2>';
+      var grid = document.createElement('div');
+      grid.className = 'fs-lvgrid';
+      mine.forEach(function (l) {
+        var s = p.stars[l.no] || 0;
+        var unlocked = isUnlocked(l.no);
+        var b = document.createElement('button');
+        b.className = 'fs-lvbtn' + (s > 0 ? ' fs-done' : '') + (unlocked ? '' : ' fs-lock') +
+          (unlocked && s === 0 && l.no === curNo ? ' fs-cur' : '');
+        var st = '';
+        for (var i = 1; i <= 3; i++) st += i <= s ? '⭐' : '·';
+        b.innerHTML = '<b>' + (unlocked ? l.no : '🔒') + '</b><i>' + l.words.length + ' 词</i>' +
+          '<span class="fs-lvstars">' + (unlocked ? st : '') + '</span>';
+        b.title = '第 ' + l.no + ' 关 · ' + l.islandName + '第 ' + l.inIsland + ' 关';
+        b.onclick = function () { audio(); startLevel(l.no); };
+        grid.appendChild(b);
+      });
+      box.appendChild(grid);
+      body.appendChild(box);
+    });
+
+    var cur = body.querySelector('.fs-cur');
+    if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ block: 'center' }); } catch (e) { } }
   }
 
   /* ---------- 粒子 ---------- */
@@ -1853,7 +2427,7 @@
   /* ---------- 更新 ---------- */
   function update(dt) {
     for (var i = 0; i < G.trail.length; i++) G.trail[i].t += dt;
-    while (G.trail.length && G.trail[0].t > 0.19) G.trail.shift();
+    while (G.trail.length && G.trail[0].t > 0.15) G.trail.shift();
 
     var d = DIFF[settings.diff] || DIFF.easy;
 
@@ -1909,42 +2483,91 @@
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
-  function drawFruitBody(x, y, r, col, wob) {
-    ctx.save();
-    ctx.beginPath(); ctx.arc(x, y + r * 0.16, r * 0.98, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(90,50,110,.22)'; ctx.fill();
-    var g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.42, r * 0.12, x, y, r * 1.08);
-    g.addColorStop(0, '#ffffff'); g.addColorStop(0.18, col[0]); g.addColorStop(1, col[1]);
-    ctx.beginPath();
-    ctx.ellipse(x, y, r * 0.98, r * 1.02, Math.sin(wob) * 0.05, 0, Math.PI * 2);
-    ctx.fillStyle = g; ctx.fill();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(x - r * 0.34, y - r * 0.40, r * 0.22, r * 0.14, -0.6, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(x + r * 0.30, y - r * 0.98, r * 0.26, r * 0.12, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#4fbf5a'; ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(x, y - r * 0.92); ctx.lineTo(x - r * 0.06, y - r * 1.14);
-    ctx.lineWidth = Math.max(2, r * 0.09); ctx.strokeStyle = '#7a5230'; ctx.stroke();
-    ctx.restore();
+  /* 水果本体 + 上面的单词，每帧都要出现。原实现每帧 createRadialGradient + strokeText + fillText，
+     这是手机上（尤其微信内置浏览器）掉帧的主因。改成一次性画进离屏小位图，每帧只 drawImage。
+     位图挂在水果对象上，换回合或 DPR 变化时按需重建。 */
+  function paintFruit(g, x, y, r, col) {
+    g.beginPath(); g.arc(x, y + r * 0.16, r * 0.98, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(90,50,110,.22)'; g.fill();
+    var rg = g.createRadialGradient(x - r * 0.35, y - r * 0.42, r * 0.12, x, y, r * 1.08);
+    rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.18, col[0]); rg.addColorStop(1, col[1]);
+    g.beginPath();
+    g.ellipse(x, y, r * 0.98, r * 1.02, 0, 0, Math.PI * 2);
+    g.fillStyle = rg; g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = 'rgba(255,255,255,.55)'; g.stroke();
+    g.beginPath();
+    g.ellipse(x - r * 0.34, y - r * 0.40, r * 0.22, r * 0.14, -0.6, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.fill();
+    g.beginPath();
+    g.ellipse(x + r * 0.30, y - r * 0.98, r * 0.26, r * 0.12, -0.5, 0, Math.PI * 2);
+    g.fillStyle = '#4fbf5a'; g.fill();
+    g.beginPath();
+    g.moveTo(x, y - r * 0.92); g.lineTo(x - r * 0.06, y - r * 1.14);
+    g.lineWidth = Math.max(2, r * 0.09); g.strokeStyle = '#7a5230'; g.stroke();
   }
-  function drawLabel(text, x, y, r) {
+  function paintLabel(g, text, x, y, r) {
     var size = Math.min(r * 0.74, 26);
     var w = measureLabel(text, size);
     var maxW = r * 1.66;
     while (w > maxW && size > 10) { size -= 1; w = measureLabel(text, size); }
-    ctx.save();
-    ctx.font = 'bold ' + size + 'px ' + FONT;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = Math.max(2.5, size * 0.24);
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(25,15,40,.82)';
-    ctx.strokeText(text, x, y);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, x, y);
-    ctx.restore();
+    g.font = 'bold ' + size + 'px ' + FONT;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = Math.max(2.5, size * 0.24);
+    g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(25,15,40,.82)';
+    g.strokeText(text, x, y);
+    g.fillStyle = '#ffffff';
+    g.fillText(text, x, y);
+  }
+  function paintHalf(g, r, col, side, label) {
+    g.beginPath();
+    g.arc(0, 0, r, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI * 1.5);
+    g.closePath();
+    var rg = g.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+    rg.addColorStop(0, col[0]); rg.addColorStop(1, col[1]);
+    g.fillStyle = rg; g.fill();
+    g.beginPath();
+    g.arc(0, 0, r * 0.74, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI * 1.5);
+    g.closePath();
+    g.fillStyle = 'rgba(255,244,228,.8)'; g.fill();
+    g.font = 'bold 15px ' + FONT;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(255,255,255,.88)';
+    g.fillText(label, 0, 0);
+  }
+  function sprMake(key, size, painter) {
+    var sp = SPR[key];
+    if (sp) return sp;
+    var c = document.createElement('canvas');
+    c.width = Math.ceil(size * DPR); c.height = Math.ceil(size * DPR);
+    var g = c.getContext('2d');
+    g.scale(DPR, DPR);
+    painter(g);
+    sp = { c: c, size: size };
+    if (SPRN >= 24) sprClear();     // 兜底，正常路径不会走到
+    SPR[key] = sp; SPRN++;
+    return sp;
+  }
+  function fruitSprite(f) {
+    if (f.sprite) return f.sprite;
+    var size = Math.ceil(f.r * 1.34 * 2);
+    var key = 'F' + f.col[0] + f.col[1] + Math.round(f.r) + '|' + f.label;
+    f.sprite = sprMake(key, size, function (g) {
+      var m = size / 2;
+      paintFruit(g, m, m, f.r, f.col);
+      paintLabel(g, f.label, m, m, f.r);
+    });
+    return f.sprite;
+  }
+  function halfSprite(h) {
+    if (h.sprite) return h.sprite;
+    var size = Math.ceil(h.r * 2.3);
+    var key = 'H' + h.col[0] + h.col[1] + Math.round(h.r) + h.side + '|' + h.label;
+    h.sprite = sprMake(key, size, function (g) {
+      g.translate(size / 2, size / 2);
+      paintHalf(g, h.r, h.col, h.side, h.label);
+    });
+    return h.sprite;
   }
 
   function render() {
@@ -1955,27 +2578,11 @@
     if (G.shake > 0) { var s = G.shake * 12; ctx.translate(rnd(-s, s), rnd(-s, s)); }
 
     G.halves.forEach(function (h) {
-      var a = clamp(1 - h.t / h.life, 0, 1);
+      var sh = halfSprite(h);
       ctx.save();
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = clamp(1 - h.t / h.life, 0, 1);
       ctx.translate(h.x, h.y); ctx.rotate(h.rot);
-      ctx.beginPath();
-      ctx.arc(0, 0, h.r, h.side > 0 ? -Math.PI / 2 : Math.PI / 2, h.side > 0 ? Math.PI / 2 : Math.PI * 1.5);
-      ctx.closePath();
-      var g = ctx.createRadialGradient(-h.r * 0.3, -h.r * 0.3, h.r * 0.1, 0, 0, h.r);
-      g.addColorStop(0, h.col[0]); g.addColorStop(1, h.col[1]);
-      ctx.fillStyle = g; ctx.fill();
-      ctx.beginPath();
-      ctx.arc(0, 0, h.r * 0.74, h.side > 0 ? -Math.PI / 2 : Math.PI / 2, h.side > 0 ? Math.PI / 2 : Math.PI * 1.5);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(255,244,228,.8)'; ctx.fill();
-      ctx.restore();
-      ctx.save();
-      ctx.globalAlpha = a * 0.5;
-      ctx.font = 'bold 15px ' + FONT;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#fff';
-      ctx.fillText(h.label, h.x, h.y);
+      ctx.drawImage(sh.c, -sh.size / 2, -sh.size / 2, sh.size, sh.size);
       ctx.restore();
     });
 
@@ -1998,14 +2605,18 @@
         ctx.strokeStyle = 'rgba(39,174,96,.25)'; ctx.lineWidth = 14; ctx.stroke();
         ctx.restore();
       }
-      drawFruitBody(f.x, f.y, f.r, f.col, f.wob);
-      drawLabel(f.label, f.x, f.y, f.r);
+      var sf = fruitSprite(f);
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(Math.sin(f.wob) * 0.05);   // 原来的椭圆轻微摆动，现在整体一起摆
+      ctx.drawImage(sf.c, -sf.size / 2, -sf.size / 2, sf.size, sf.size);
+      ctx.restore();
     });
 
     if (G.trail.length > 1) {
       for (var i = 1; i < G.trail.length; i++) {
         var a2 = G.trail[i], b2 = G.trail[i - 1];
-        var life = 1 - a2.t / 0.19;
+        var life = 1 - a2.t / 0.15;
         ctx.beginPath();
         ctx.moveTo(b2.x, b2.y); ctx.lineTo(a2.x, a2.y);
         ctx.lineCap = 'round';
@@ -2030,13 +2641,26 @@
   }
 
   /* ---------- 主循环 ---------- */
-  var last = 0;
+  var last = 0, wasIdle = null;
   function loop(now) {
     requestAnimationFrame(loop);
     if (!visible) { last = now; return; }
+    if (document.hidden) { last = now; needPaint = true; return; }   // 切到后台就别空转
+
+    // 只有真需要动画的状态才逐帧重画；首页 / 记忆页 / 关卡地图 / 结算页画面是静态的，
+    // 这时把 canvas 收起来（.fs-idle），整体绘制开销直接归零。
+    var idle = (G.state !== 'playing' && G.state !== 'roundEnd' && G.state !== 'paused');
+    if (idle !== wasIdle) { wasIdle = idle; if (cv) cv.classList.toggle('fs-idle', idle); }
+
     var dt = last ? Math.min((now - last) / 1000, 1 / 30) : 1 / 60;
     last = now;
-    if (G.state !== 'paused' && G.state !== 'ready') update(dt);
+    if (idle) return;
+
+    if (G.state === 'paused') {           // 暂停时画面定格，补画一帧即可
+      if (needPaint) { needPaint = false; render(); }
+      return;
+    }
+    update(dt);
     render();
   }
 
@@ -2047,6 +2671,7 @@
   function pauseGame() {
     if (G.state === 'playing' || G.state === 'roundEnd') {
       G.prevState = G.state; G.state = 'paused';
+      needPaint = true;
       show(el.fsPauseScreen);
     }
   }
@@ -2065,8 +2690,10 @@
     if (bank && bank.length) G.bank = bank;
     else if (!G.bank.length) G.bank = window.FruitSlicerBank || [];
     if (!G.bank.length) { alert('词库为空，无法开始切水果。'); return; }
+    LEVELS = null;   // 词库换了就重建关卡表
 
     G.masteredSet = new Set(lsGet(LS.mastered, []));
+    G.mode = 'free'; G.level = null; G.pendingLevel = null;
     G.pool = activePool();
     G.state = 'ready';
     G.fruits = []; G.parts = []; G.halves = []; G.trail = [];
@@ -2078,10 +2705,12 @@
     resize();
 
     el.fsBankInfo.textContent = G.bank.length + ' 个 PET 单词（含中文释义）';
+    hide(el.fsOverScreen); hide(el.fsPauseScreen); hide(el.fsLevelOverScreen);
+    hide(el.fsMapScreen); hide(el.fsLearnScreen);
     el.fsStartScreen && show(el.fsStartScreen);
-    hide(el.fsOverScreen); hide(el.fsPauseScreen);
     setPrompt('准 备 开 始', 'PET 切水果', '按住鼠标 / 手指划动切开正确的水果', '');
     syncSegs();
+    renderStartProg();
     updateHUD();
     last = 0;
   }
@@ -2150,9 +2779,56 @@
     el.fsBtnAgain.onclick = function () { audio(); startGame(); };
     el.fsBtnHome.onclick = function () {
       G.state = 'ready';
-      hide(el.fsOverScreen); show(el.fsStartScreen);
-      G.pool = activePool(); updateHUD();
+      G.mode = 'free'; G.level = null;
+      hide(el.fsOverScreen); hide(el.fsLevelOverScreen); hide(el.fsMapScreen); hide(el.fsLearnScreen);
+      show(el.fsStartScreen);
+      G.pool = activePool(); renderStartProg(); updateHUD();
     };
+
+    /* --- 闯关模式 --- */
+    if (el.fsBtnAdventure) el.fsBtnAdventure.onclick = function () { audio(); renderStartProg(); openMap(); };
+    if (el.fsBtnToMap) el.fsBtnToMap.onclick = openMap;
+    if (el.fsBtnMapBack) el.fsBtnMapBack.onclick = function () {
+      G.state = 'ready'; G.mode = 'free'; G.level = null;
+      hide(el.fsMapScreen); show(el.fsStartScreen); renderStartProg(); updateHUD();
+    };
+    if (el.fsBtnLearnPrev) el.fsBtnLearnPrev.onclick = function () {
+      if (!G.learn) return; G.learn.page--; renderLearnPage();
+    };
+    if (el.fsBtnLearnNext) el.fsBtnLearnNext.onclick = function () {
+      var L = G.learn; if (!L) return;
+      var pages = Math.ceil(L.words.length / LEARN_PER_PAGE);
+      if (L.page < pages - 1) { L.page++; renderLearnPage(); return; }
+      if (LEARN_ONLY) {
+        LEARN_ONLY = false;
+        hide(el.fsLearnScreen); show(el.fsLevelOverScreen);
+      } else {
+        audio(); startLevelGame();
+      }
+    };
+    if (el.fsBtnLearnSkip) el.fsBtnLearnSkip.onclick = function () { audio(); startLevelGame(); };
+    if (el.fsBtnLearnMute) el.fsBtnLearnMute.onclick = function () {
+      if (!G.learn) return;
+      G.learn.hideCn = !G.learn.hideCn;
+      this.classList.toggle('fs-on', G.learn.hideCn);
+      renderLearnPage();
+    };
+    if (el.fsBtnLvNext) el.fsBtnLvNext.onclick = function () {
+      if (!G.level) { openMap(); return; }
+      audio(); startLevel(G.level.no + 1);
+    };
+    if (el.fsBtnLvRetry) el.fsBtnLvRetry.onclick = function () {
+      if (!G.level) { openMap(); return; }
+      audio();
+      // 没过关就再看一遍词再切；已经过关只是来刷星的，直接开打
+      G.pendingLevel = G.level;
+      if ((G.lastStars || 0) >= 1) startLevelGame(); else openLearn(G.level, false);
+    };
+    if (el.fsBtnLvWords) el.fsBtnLvWords.onclick = function () {
+      if (!G.level) return;
+      openLearn(G.level, true);
+    };
+    if (el.fsBtnLvMap) el.fsBtnLvMap.onclick = function () { audio(); openMap(); };
     el.fsBtnPause.onclick = function () {
       if (G.state === 'paused') resumeGame(); else pauseGame();
     };
@@ -2181,7 +2857,16 @@
         e.preventDefault();
         if (G.state === 'paused') resumeGame(); else pauseGame();
       } else if (k === 'enter') {
-        if (el.fsStartScreen.classList.contains('fs-show')) el.fsBtnStart.click();
+        if (el.fsMapScreen && el.fsMapScreen.classList.contains('fs-show')) {
+          audio();
+          var p = getProgress();
+          startLevel(Math.min(p.cleared + 1, totalLevels()));
+        } else if (el.fsLearnScreen && el.fsLearnScreen.classList.contains('fs-show')) {
+          el.fsBtnLearnNext.click();
+        } else if (el.fsLevelOverScreen && el.fsLevelOverScreen.classList.contains('fs-show')) {
+          if (el.fsBtnLvNext.style.display !== 'none') el.fsBtnLvNext.click();
+          else el.fsBtnLvRetry.click();
+        } else if (el.fsStartScreen.classList.contains('fs-show')) el.fsBtnStart.click();
         else if (el.fsOverScreen.classList.contains('fs-show')) el.fsBtnAgain.click();
         else if (G.state === 'paused') resumeGame();
       } else if (k === 'm') {
@@ -2199,9 +2884,21 @@
       bindEvents();
       open(bank);
     },
+    openMap: function () {
+      if (!initDom()) return;
+      bindEvents();
+      open();
+      openMap();
+    },
     close: close,
     isOpen: function () { return visible; },
-    bankSize: function () { return (window.FruitSlicerBank || []).length; }
+    bankSize: function () { return (window.FruitSlicerBank || []).length; },
+    levelCount: function () { return totalLevels(); },
+    progress: function () { return getProgress(); },
+    resetProgress: function () {
+      lsSet(LS.progress, { stars: {}, cleared: 0, wrongWords: [] });
+      if (visible) { renderStartProg(); renderMap(); updateHUD(); }
+    }
   };
 
   if (document.readyState === 'loading') {
